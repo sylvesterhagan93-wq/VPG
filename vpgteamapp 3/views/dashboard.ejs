@@ -121,6 +121,27 @@
 
     <div class="page-title" style="font-size:18px;">Offer Letters</div>
 
+    <% if (isAdmin && deletedOfferLetter) { %>
+      <div class="alert info" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span>
+          Deleted the Offer Letter for <strong><%= deletedOfferLetter.seller_name %></strong><% if (deletedOfferLetter.property_address) { %> (<%= deletedOfferLetter.property_address %>)<% } %> from history.
+        </span>
+        <form method="POST" action="/offer-letters/<%= deletedOfferLetter.id %>/restore" style="margin:0;">
+          <button type="submit" class="btn-tiny reactivate">Undo</button>
+        </form>
+      </div>
+    <% } %>
+
+    <% if (offerResendNotice) { %>
+      <% if (offerResendNotice.kind === 'success') { %>
+        <div class="alert info">
+          Resent the Offer Letter to <strong><%= offerResendNotice.letter.seller_name %></strong><% if (offerResendNotice.letter.property_address) { %> (<%= offerResendNotice.letter.property_address %>)<% } %>.
+        </div>
+      <% } else { %>
+        <div class="alert error"><%= offerResendNotice.message %></div>
+      <% } %>
+    <% } %>
+
     <div class="card">
       <% if (!offerLetters || offerLetters.length === 0) { %>
         <div class="empty-state">No offer letters sent yet. Use the Offer Letter card above to send one.</div>
@@ -146,6 +167,16 @@
                 <td><%= new Date(o.created_at).toLocaleString('en-US') %></td>
                 <td style="white-space:nowrap;">
                   <a class="btn-tiny download-link" href="/offer-letters/<%= o.id %>/download">Download</a>
+                  <form method="POST" action="/offer-letters/<%= o.id %>/resend" style="display:inline;"
+                        onsubmit="return confirm('Resend this offer letter email, with the same PDF attached, to this seller?');">
+                    <button type="submit" class="btn-tiny">Resend</button>
+                  </form>
+                  <% if (isAdmin) { %>
+                    <form method="POST" action="/offer-letters/<%= o.id %>/delete" style="display:inline;"
+                          onsubmit="return confirm('Remove this offer letter from history? You can undo it right after.');">
+                      <button type="submit" class="btn-tiny">Delete</button>
+                    </form>
+                  <% } %>
                 </td>
               </tr>
             <% }) %>

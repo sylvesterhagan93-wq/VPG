@@ -101,7 +101,15 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const [result, clevelandWeather, deletedAgreementResult, resentAgreementResult, offerLettersResult] = await Promise.all([
+    const [
+      result,
+      clevelandWeather,
+      deletedAgreementResult,
+      resentAgreementResult,
+      offerLettersResult,
+      deletedOfferLetterResult,
+      resentOfferLetterResult,
+    ] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
          FROM agreements
@@ -143,6 +151,19 @@ router.get("/dashboard", async (req, res, next) => {
          ORDER BY offer_letters.created_at DESC
          LIMIT 10`
       ),
+      // Same "?deleted=<id>" undo-banner pattern as agreements above, for
+      // an Offer Letter an admin just removed from its own history table.
+      req.query.deletedOffer
+        ? db.query(
+            `SELECT id, seller_name, property_address FROM offer_letters WHERE id = $1 AND deleted_at IS NOT NULL`,
+            [req.query.deletedOffer]
+          )
+        : Promise.resolve({ rows: [] }),
+      // Same idea as resentAgreementResult above, after a successful Offer
+      // Letter resend (?resentOffer=<id>).
+      req.query.resentOffer
+        ? db.query(`SELECT id, seller_name, property_address FROM offer_letters WHERE id = $1`, [req.query.resentOffer])
+        : Promise.resolve({ rows: [] }),
     ]);
 
     let resendNotice = null;
@@ -156,6 +177,13 @@ router.get("/dashboard", async (req, res, next) => {
       };
     }
 
+    let offerResendNotice = null;
+    if (req.query.resendOfferError) {
+      offerResendNotice = { kind: "error", message: req.query.resendOfferError };
+    } else if (resentOfferLetterResult.rows[0]) {
+      offerResendNotice = { kind: "success", letter: resentOfferLetterResult.rows[0] };
+    }
+
     res.render("dashboard", {
       userName: req.session.userName,
       isAdmin: req.session.isAdmin,
@@ -165,6 +193,8 @@ router.get("/dashboard", async (req, res, next) => {
       deletedAgreement: deletedAgreementResult.rows[0] || null,
       resendNotice,
       offerLetters: offerLettersResult.rows,
+      deletedOfferLetter: deletedOfferLetterResult.rows[0] || null,
+      offerResendNotice,
     });
   } catch (err) {
     next(err);

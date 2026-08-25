@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("../db/db");
 const { generateOfferLetterPdf } = require("../services/offerLetterPdf");
 const { sendOfferLetterEmail, isEmailConfigured } = require("../services/emailSender");
+const requireAdmin = require("../middleware/requireAdmin");
 
 const router = express.Router();
 
@@ -177,6 +178,148 @@ router.post("/offer-letters/send", async (req, res, next) => {
       userName: req.session.userName,
       emailConfigured: isEmailConfigured(),
     });
+  }
+});
+
+// Soft-deletes an Offer Letter from its dashboard history - admin only,
+// mirroring how agreement deletion is gated (routes/agreements.js). Never
+// hard-deletes the row: just sets deleted_at, which the /dashboard query
+// filters out, so Undo (right below) can bring it straight back.
+router.post("/offer-letters/:id/delete", requireAdmin, async (req, res, next) => {
+  try {
+    await db.query(`UPDATE offer_letters SET deleted_at = now() WHERE id = $1`, [req.params.id]);
+    res.redirect(`/dashboard?deletedOffer=${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Undo for the delete above - clears deleted_at so the Offer Letter
+// reappears in its history exactly as it was.
+router.post("/offer-letters/:id/restore", requireAdmin, async (req, res, next) => {
+  try {
+    await db.query(`UPDATE offer_letters SET deleted_at = NULL WHERE id = $1`, [req.params.id]);
+    res.redirect("/dashboard");
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Resends an Offer Letter - open to any team member. Unlike an agreement's
+// "Resend" (which just nudges HelloSign to re-send its own reminder for an
+// already-existing signature request), an Offer Letter is a plain one-shot
+// email, so resending means actually sending it again: regenerate the exact
+// same proposal PDF from the saved form_data and re-send the same
+// subject/body/attachment to the same seller. This is logged as its own
+// new offer_letters row (same as an original send, including on failure)
+// so history shows every real email that actually went out, rather than
+// silently mutating the original record.
+router.post("/offer-letters/:id/resend", async (req, res, next) => {
+  let letter;
+  try {
+    const result = await db.query(`SELECT * FROM offer_letters WHERE id = $1`, [req.params.id]);
+    letter = result.rows[0];
+  } catch (err) {
+    return next(err);
+  }
+  if (!letter) return res.status(404).send("Offer letter not found.");
+
+  // form_data has the full original field set (including signer name/title
+  // and additional notes, which aren't their own columns); fall back to the
+  // row's own columns for anything missing, e.g. very old rows sent before
+  // form_data existed.
+  const fields = Object.assign(
+    {
+      seller_name: letter.seller_name,
+      seller_email: letter.seller_email,
+      property_address: letter.property_address,
+      cash_offer_amount: letter.cash_offer_amount,
+      cash_closing_timeframe: letter.cash_closing_timeframe,
+      concierge_offer_amount: letter.concierge_offer_amount,
+      concierge_closing_timeframe: letter.concierge_closing_timeframe,
+      email_subject: letter.email_subject,
+      email_body: letter.email_body,
+      signer_name: DEFAULT_SIGNER_NAME,
+      signer_title: DEFAULT_SIGNER_TITLE,
+      additional_notes: "",
+    },
+    letter.form_data || {}
+  );
+
+  try {
+    const pdfBuffer = await generateOfferLetterPdf({
+      sellerName: fields.seller_name,
+      propertyAddress: fields.property_address,
+      cashOfferAmount: fields.cash_offer_amount,
+      cashClosingTimeframe: fields.cash_closing_timeframe,
+      conciergeOfferAmount: fields.concierge_offer_amount,
+      conciergeClosingTimeframe: fields.concierge_closing_timeframe,
+      signerName: fields.signer_name,
+      signerTitle: fields.signer_title,
+      additionalNotes: fields.additional_notes,
+    });
+
+    const filename = `Property_Purchase_Proposal_${(fields.property_address || "proposal").replace(/[^a-z0-9]+/gi, "_")}.pdf`;
+
+    const sendResult = await sendOfferLetterEmail({
+      to: fields.seller_email,
+      subject: fields.email_subject,
+      body: fields.email_body,
+      pdfBuffer,
+      filename,
+      senderName: fields.signer_name,
+    });
+
+    await db.query(
+      `INSERT INTO offer_letters
+        (sent_by_user_id, seller_name, seller_email, property_address, cash_offer_amount, cash_closing_timeframe,
+         concierge_offer_amount, concierge_closing_timeframe, email_subject, email_body, status, form_data)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        req.session.userId,
+        fields.seller_name,
+        fields.seller_email,
+        fields.property_address,
+        fields.cash_offer_amount,
+        fields.cash_closing_timeframe,
+        fields.concierge_offer_amount,
+        fields.concierge_closing_timeframe,
+        fields.email_subject,
+        fields.email_body,
+        sendResult.mode === "mock" ? "mock_sent" : "sent",
+        JSON.stringify(fields),
+      ]
+    );
+
+    res.redirect(`/dashboard?resentOffer=${letter.id}`);
+  } catch (err) {
+    // Log the failed retry too, same as the original send flow, so it
+    // shows up in history instead of silently vanishing - but don't let a
+    // logging failure mask the real error being reported to the user.
+    await db
+      .query(
+        `INSERT INTO offer_letters
+          (sent_by_user_id, seller_name, seller_email, property_address, cash_offer_amount, cash_closing_timeframe,
+           concierge_offer_amount, concierge_closing_timeframe, email_subject, email_body, status, error_message, form_data)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'failed', $11, $12)`,
+        [
+          req.session.userId,
+          fields.seller_name,
+          fields.seller_email,
+          fields.property_address,
+          fields.cash_offer_amount,
+          fields.cash_closing_timeframe,
+          fields.concierge_offer_amount,
+          fields.concierge_closing_timeframe,
+          fields.email_subject,
+          fields.email_body,
+          err.message,
+          JSON.stringify(fields),
+        ]
+      )
+      .catch(() => {});
+
+    res.redirect(`/dashboard?resendOfferError=${encodeURIComponent(err.message)}`);
   }
 });
 
