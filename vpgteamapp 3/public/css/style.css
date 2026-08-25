@@ -335,6 +335,19 @@ table.history th {
   margin-bottom: -4px;
 }
 
+.locked-tag {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.field input:disabled {
+  background: #eef0f5;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .btn {
   display: inline-block;
   background: var(--accent);

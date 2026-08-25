@@ -9,6 +9,14 @@
 const BUYER_ENTITY_NAME = "Venture Property Group, LLC";
 const ASSIGNOR_TITLE = "Managing Member";
 
+// The person who signs on behalf of Venture Property Group, LLC (Buyer
+// Representative on Purchase/Novation, Assignor Representative on
+// Assignment) is always Sylvester - locked, not editable by anyone else on
+// the team. This is enforced server-side in routes/agreements.js, not just
+// hidden in the UI, so it can't be changed by editing the form or posting
+// directly to the route.
+const VPG_PRINCIPAL = { name: "Sylvester Hagan", email: "sylvesterhagan93@gmail.com" };
+
 // Every deal can use a different title/escrow company, so this same set of
 // fields is reused (with a shared "Escrow / Title Company" form section) on
 // Purchase, Novation, and Assignment agreements - only the company name is
@@ -120,4 +128,4 @@ function getType(key) {
   return AGREEMENT_TYPES[key] || null;
 }
 
-module.exports = { AGREEMENT_TYPES, getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE };
+module.exports = { AGREEMENT_TYPES, getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE, VPG_PRINCIPAL };

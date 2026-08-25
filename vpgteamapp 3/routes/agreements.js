@@ -1,6 +1,6 @@
 const express = require("express");
 const db = require("../db/db");
-const { AGREEMENT_TYPES, getType } = require("../config/agreementTypes");
+const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
 const { sendAgreementForSignature } = require("../services/hellosign");
 
 const router = express.Router();
@@ -29,13 +29,13 @@ router.get("/agreements/new/:type", (req, res) => {
   const typeDef = getType(req.params.type);
   if (!typeDef) return res.status(404).send("Unknown agreement type");
 
-  // Pre-fill the "signs on behalf of VPG" signer with whoever is logged in,
-  // and default any agreement_date field to today - both stay editable.
+  // The "signs on behalf of VPG" signer is always Sylvester - locked, not
+  // editable, and not tied to whoever happens to be logged in.
   const formValues = {};
   typeDef.signers.forEach((s) => {
     if (s.internal) {
-      formValues[`signer_${s.key}_name`] = req.session.userName || "";
-      formValues[`signer_${s.key}_email`] = req.session.userEmail || "";
+      formValues[`signer_${s.key}_name`] = VPG_PRINCIPAL.name;
+      formValues[`signer_${s.key}_email`] = VPG_PRINCIPAL.email;
     }
   });
   if (typeDef.fields.some((f) => f.key === "agreement_date")) {
@@ -52,6 +52,7 @@ router.get("/agreements/new/:type", (req, res) => {
     error: null,
     formValues,
     userName: req.session.userName,
+    vpgPrincipal: VPG_PRINCIPAL,
   });
 });
 
@@ -61,13 +62,21 @@ router.post("/agreements/new/:type", async (req, res) => {
 
   const body = req.body;
 
-  // Collect signer name/email pairs
+  // Collect signer name/email pairs. The "signs on behalf of VPG" signer is
+  // always forced to Sylvester here, regardless of what was submitted -
+  // this is what actually enforces the lock (the form doesn't even render
+  // editable inputs for it, but this is what stops someone from bypassing
+  // that by posting to this route directly).
   const signers = {};
   for (const s of typeDef.signers) {
-    signers[s.key] = {
-      name: (body[`signer_${s.key}_name`] || "").trim(),
-      email: (body[`signer_${s.key}_email`] || "").trim(),
-    };
+    if (s.internal) {
+      signers[s.key] = { name: VPG_PRINCIPAL.name, email: VPG_PRINCIPAL.email };
+    } else {
+      signers[s.key] = {
+        name: (body[`signer_${s.key}_name`] || "").trim(),
+        email: (body[`signer_${s.key}_email`] || "").trim(),
+      };
+    }
   }
 
   // Collect the rest of the fields
@@ -92,6 +101,7 @@ router.post("/agreements/new/:type", async (req, res) => {
       error: `Please fill in: ${missing.join(", ")}`,
       formValues: body,
       userName: req.session.userName,
+      vpgPrincipal: VPG_PRINCIPAL,
     });
   }
 
@@ -141,6 +151,7 @@ router.post("/agreements/new/:type", async (req, res) => {
       error: `Could not send: ${err.message}`,
       formValues: body,
       userName: req.session.userName,
+      vpgPrincipal: VPG_PRINCIPAL,
     });
   }
 });
