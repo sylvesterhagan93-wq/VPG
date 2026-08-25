@@ -51,6 +51,20 @@
           <div style="background:var(--green); height:100%; width:<%= summary.goalPct %>%;"></div>
         </div>
       </div>
+      <div class="type-card">
+        <h3>Avg Deal Size <span class="you-tag">(UCB + Closed)</span></h3>
+        <p style="font-size:20px; font-weight:700; color:var(--navy);">
+          <%= summary.avgDealSize !== null ? '$' + Math.round(summary.avgDealSize).toLocaleString('en-US') : '-' %>
+        </p>
+        <p>profit per deal, all-time<% if (summary.avgDealSizeCount > 0) { %> (<%= summary.avgDealSizeCount %> deal<%= summary.avgDealSizeCount === 1 ? '' : 's' %>)<% } %></p>
+      </div>
+      <div class="type-card">
+        <h3>Avg Close % <span class="you-tag">(sale &divide; ARV)</span></h3>
+        <p style="font-size:20px; font-weight:700; color:var(--navy);">
+          <%= summary.avgClosePct !== null ? Math.round(summary.avgClosePct) + '%' : '-' %>
+        </p>
+        <p>across UCB + Closed, all-time<% if (summary.avgClosePctCount > 0) { %> (<%= summary.avgClosePctCount %> deal<%= summary.avgClosePctCount === 1 ? '' : 's' %>)<% } %></p>
+      </div>
     </div>
 
     <% statuses.forEach(function(status) { %>

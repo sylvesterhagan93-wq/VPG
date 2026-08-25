@@ -94,6 +94,31 @@ router.get("/dealboard", async (req, res, next) => {
     summary.goal = MONTHLY_CLOSED_PROFIT_GOAL;
     summary.goalPct = summary.goal > 0 ? Math.min(100, Math.round((summary.closed.profit / summary.goal) * 100)) : 0;
 
+    // Average deal size and average close % - across ALL UCB/Closed deals
+    // ever, not just the selected month, since a single month often has too
+    // few completed deals for the average to mean much and these numbers
+    // shouldn't jump around just from flipping the month dropdown.
+    const performanceResult = await db.query(
+      `SELECT estimated_profit, sale_price, arv FROM deals WHERE status IN ('UCB', 'Closed')`
+    );
+    const profitRows = performanceResult.rows.filter(
+      (d) => d.estimated_profit !== null && d.estimated_profit !== undefined
+    );
+    summary.avgDealSize =
+      profitRows.length > 0
+        ? profitRows.reduce((total, d) => total + Number(d.estimated_profit), 0) / profitRows.length
+        : null;
+    summary.avgDealSizeCount = profitRows.length;
+
+    const pctRows = performanceResult.rows.filter(
+      (d) => d.sale_price !== null && d.arv !== null && Number(d.arv) !== 0
+    );
+    summary.avgClosePct =
+      pctRows.length > 0
+        ? pctRows.reduce((total, d) => total + (Number(d.sale_price) / Number(d.arv)) * 100, 0) / pctRows.length
+        : null;
+    summary.avgClosePctCount = pctRows.length;
+
     res.render("dealboard", {
       userName: req.session.userName,
       isAdmin: req.session.isAdmin,
