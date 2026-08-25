@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Deal Board</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Deal Board</div>
+    <div class="page-subtitle">What's active, what's under contract, and what's closed - <%= selectedMonthLabel %>.</div>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+      <form method="GET" action="/dealboard" style="margin:0;">
+        <select name="month" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:14px;">
+          <% months.forEach(function(m) { %>
+            <option value="<%= m.key %>" <%= m.key === selectedMonthKey ? 'selected' : '' %>><%= m.label %></option>
+          <% }) %>
+        </select>
+      </form>
+      <a href="/dealboard/new" class="btn">+ Add Deal</a>
+    </div>
+
+    <div class="type-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:24px;">
+      <div class="type-card">
+        <h3>Active <span class="you-tag">(needs sold)</span></h3>
+        <p style="font-size:20px; font-weight:700; color:var(--navy);"><%= summary.active.count %></p>
+        <p>$<%= summary.active.profit.toLocaleString('en-US') %> potential profit</p>
+      </div>
+      <div class="type-card">
+        <h3>UCB <span class="you-tag">(under contract)</span></h3>
+        <p style="font-size:20px; font-weight:700; color:var(--navy);"><%= summary.ucb.count %></p>
+        <p>$<%= summary.ucb.profit.toLocaleString('en-US') %> potential profit</p>
+      </div>
+      <div class="type-card">
+        <h3>Closed</h3>
+        <p style="font-size:20px; font-weight:700; color:var(--success);"><%= summary.closed.count %></p>
+        <p>$<%= summary.closed.profit.toLocaleString('en-US') %> profit</p>
+      </div>
+      <div class="type-card">
+        <h3>Monthly Goal</h3>
+        <p style="font-size:20px; font-weight:700; color:var(--navy);">$<%= summary.closed.profit.toLocaleString('en-US') %> / $<%= summary.goal.toLocaleString('en-US') %></p>
+        <div style="background:#eef0f5; border-radius:6px; height:8px; overflow:hidden; margin-top:8px;">
+          <div style="background:var(--green); height:100%; width:<%= summary.goalPct %>%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <% statuses.forEach(function(status) { %>
+      <div class="page-title" style="font-size:18px; display:flex; align-items:center; gap:10px;">
+        <%= status %>
+        <span class="you-tag">(<%= byStatus[status].length %>)</span>
+      </div>
+      <div class="card" style="margin-bottom:28px;">
+        <% if (byStatus[status].length === 0) { %>
+          <div class="empty-state">No deals here yet.</div>
+        <% } else { %>
+          <div style="overflow-x:auto;">
+          <table class="history">
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th>Type</th>
+                <th>Exit / Channel</th>
+                <th>Buy Price</th>
+                <th>ARV</th>
+                <th>Sale Price</th>
+                <th>%</th>
+                <th>Est. Profit</th>
+                <th>EMD</th>
+                <th>Added By</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% byStatus[status].forEach(function(d) { %>
+                <%
+                  const pct = (d.sale_price && d.arv) ? Math.round((Number(d.sale_price) / Number(d.arv)) * 100) : null;
+                  const money = (v) => v === null || v === undefined || v === '' ? '-' : '$' + Number(v).toLocaleString('en-US');
+                %>
+                <tr>
+                  <td>
+                    <%= d.address %>
+                    <% if (d.deal_folder_url) { %>
+                      <br /><a href="<%= d.deal_folder_url %>" target="_blank" rel="noopener" style="font-size:12px;">Deal Folder &rarr;</a>
+                    <% } %>
+                  </td>
+                  <td><%= d.property_type || '-' %></td>
+                  <td><%= [d.exit_strategy, d.marketing_channel].filter(Boolean).join(' / ') || '-' %></td>
+                  <td><%= money(d.buy_price) %></td>
+                  <td><%= money(d.arv) %></td>
+                  <td><%= money(d.sale_price) %></td>
+                  <td><%= pct !== null ? pct + '%' : '-' %></td>
+                  <td><%= money(d.estimated_profit) %></td>
+                  <td><%= d.emd_received ? 'Yes' : '-' %></td>
+                  <td><%= d.created_by_name || '-' %></td>
+                  <td>
+                    <form method="POST" action="/dealboard/<%= d.id %>/status" style="margin:0;">
+                      <select name="status" onchange="this.form.submit()" class="badge <%= d.status %>" style="border:none; font-weight:600; cursor:pointer;">
+                        <% statuses.forEach(function(s) { %>
+                          <option value="<%= s %>" <%= s === d.status ? 'selected' : '' %>><%= s %></option>
+                        <% }) %>
+                      </select>
+                    </form>
+                  </td>
+                  <td style="white-space:nowrap;">
+                    <a href="/dealboard/<%= d.id %>/edit" class="btn-tiny">Edit</a>
+                    <% if (isAdmin) { %>
+                      <form method="POST" action="/dealboard/<%= d.id %>/delete" style="display:inline;"
+                            onsubmit="return confirm('Delete ' + <%- JSON.stringify(d.address) %> + ' from the board?');">
+                        <button type="submit" class="btn-tiny">Delete</button>
+                      </form>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>

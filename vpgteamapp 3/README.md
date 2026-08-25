@@ -80,6 +80,32 @@ guessing the URL. The PDF itself is never stored in the app; the Download
 button fetches it fresh from HelloSign each time, so it's always the real,
 current, fully-executed document.
 
+## Deal Board
+
+There's a **Deal Board** tab in the top nav, built to match your "VPG
+wholesale Deal Board" Google Sheet — Active (needs sold) / UCB (under
+contract) / Closed, with the same columns (property type, exit strategy,
+marketing channel, buy price, ARV, sale price, estimated profit, EMD) plus
+a monthly-goal progress bar and potential-profit totals per status, same as
+the sheet's summary rows.
+
+It works a little differently from the sheet, on purpose: instead of a new
+tab per month, there's one ongoing list, and the board defaults to showing
+whichever month you're currently in (it'll switch to September on its own
+once September starts) — a dropdown at the top lets anyone flip back to a
+past month to see what happened then. Every team member can add a deal
+("+ Add Deal") and edit one; the status dropdown right on the board changes
+a deal from Active → UCB → Closed with one click (no need to open the full
+edit form just to update where a deal stands). Only the admin account can
+delete a deal outright, so a wrong click by the team can't wipe deal
+history — everyone else can still fix or update anything else about it.
+
+Your August deals from the Google Sheet were imported once to get the
+board started; from here on, the website — not the spreadsheet — is the
+place to add and update deals. Feel free to keep the Google Sheet around
+for older months' history, but there's no live sync between the two, so
+edits made in one won't show up in the other going forward.
+
 ## Managing your team
 
 Once logged in, there's a **Team** tab in the top nav for everyone on the
@@ -181,9 +207,10 @@ the Seller(s) sign it.)
 ```
 server.js                 entry point
 config/agreementTypes.js  the 4 document types + their fields (edit this to change forms)
+config/dealBoard.js       Deal Board statuses, dropdown suggestions, monthly goal
 db/                        Postgres (Supabase) connection + seed script
 middleware/                login-required + admin-only route guards
-routes/                    auth (login/logout/invite signup) + agreement routes + team routes + HelloSign webhook
+routes/                    auth (login/logout/invite signup) + agreement routes + deal board + team routes + HelloSign webhook
 services/
   pdfGenerator.js          builds the agreement PDF from form data
   hellosign.js             sends the PDF to HelloSign (or mocks it), downloads the signed PDF

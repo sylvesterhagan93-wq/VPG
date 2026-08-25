@@ -205,6 +205,19 @@ table.history th {
 }
 .download-link:hover { text-decoration: none; }
 
+.badge.Active { background: #eaf1ff; color: var(--navy); }
+.badge.UCB { background: #fff4e0; color: #9a6400; }
+.badge.Closed { background: var(--success-bg); color: var(--success); }
+
+select.badge {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 3px 24px 3px 9px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
 .kpi-count {
   font-weight: 700;
   font-size: 15px;

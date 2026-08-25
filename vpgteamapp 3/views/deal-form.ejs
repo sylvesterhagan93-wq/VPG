@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - <%= mode === 'new' ? 'Add Deal' : 'Edit Deal' %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title"><%= mode === 'new' ? 'Add Deal' : 'Edit Deal' %></div>
+    <div class="page-subtitle">This shows up on the Deal Board right away.</div>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <div class="card">
+      <form method="POST" action="<%= mode === 'new' ? '/dealboard/new' : '/dealboard/' + deal.id + '/edit' %>">
+        <div class="section-label" style="margin-top:0;">Property</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="address">Property Address *</label>
+            <input type="text" id="address" name="address" value="<%= deal.address || '' %>" required />
+          </div>
+          <div class="field">
+            <label for="property_type">Property Type</label>
+            <input type="text" id="property_type" name="property_type" list="property-type-options" value="<%= deal.property_type || '' %>" />
+            <datalist id="property-type-options">
+              <% propertyTypeSuggestions.forEach(function(v) { %><option value="<%= v %>"><% }) %>
+            </datalist>
+          </div>
+          <div class="field">
+            <label for="exit_strategy">Exit Strategy</label>
+            <input type="text" id="exit_strategy" name="exit_strategy" list="exit-strategy-options" value="<%= deal.exit_strategy || '' %>" />
+            <datalist id="exit-strategy-options">
+              <% exitStrategySuggestions.forEach(function(v) { %><option value="<%= v %>"><% }) %>
+            </datalist>
+          </div>
+          <div class="field">
+            <label for="marketing_channel">Marketing Channel</label>
+            <input type="text" id="marketing_channel" name="marketing_channel" list="marketing-channel-options" value="<%= deal.marketing_channel || '' %>" />
+            <datalist id="marketing-channel-options">
+              <% marketingChannelSuggestions.forEach(function(v) { %><option value="<%= v %>"><% }) %>
+            </datalist>
+          </div>
+          <div class="field">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <% statuses.forEach(function(s) { %>
+                <option value="<%= s %>" <%= deal.status === s ? 'selected' : '' %>><%= s %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-label">Numbers</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="buy_price">Buy Price ($)</label>
+            <input type="text" id="buy_price" name="buy_price" value="<%= deal.buy_price ?? '' %>" />
+          </div>
+          <div class="field">
+            <label for="estimated_rehab">Estimated Rehab ($)</label>
+            <input type="text" id="estimated_rehab" name="estimated_rehab" value="<%= deal.estimated_rehab ?? '' %>" />
+          </div>
+          <div class="field">
+            <label for="arv">ARV / List Price ($)</label>
+            <input type="text" id="arv" name="arv" value="<%= deal.arv ?? '' %>" />
+          </div>
+          <div class="field">
+            <label for="sale_price">Sale Price ($)</label>
+            <input type="text" id="sale_price" name="sale_price" value="<%= deal.sale_price ?? '' %>" />
+          </div>
+          <div class="field">
+            <label for="estimated_profit">Estimated Profit ($)</label>
+            <input type="text" id="estimated_profit" name="estimated_profit" value="<%= deal.estimated_profit ?? '' %>" />
+          </div>
+          <div class="field">
+            <label for="misc_deal_costs">Misc Deal Costs ($)</label>
+            <input type="text" id="misc_deal_costs" name="misc_deal_costs" value="<%= deal.misc_deal_costs ?? '' %>" />
+          </div>
+          <div class="field" style="display:flex; align-items:center; gap:8px; margin-top:22px;">
+            <input type="checkbox" id="emd_received" name="emd_received" value="1" style="width:auto;" <%= deal.emd_received ? 'checked' : '' %> />
+            <label for="emd_received" style="margin:0;">EMD Received</label>
+          </div>
+        </div>
+
+        <div class="section-label">Notes</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="deal_folder_url">Deal Folder Link (Google Drive, etc.)</label>
+            <input type="text" id="deal_folder_url" name="deal_folder_url" value="<%= deal.deal_folder_url || '' %>" />
+          </div>
+          <div class="field full">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes"><%= deal.notes || '' %></textarea>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; display:flex; gap:12px;">
+          <button type="submit" class="btn"><%= mode === 'new' ? 'Add to Board' : 'Save Changes' %></button>
+          <a href="/dealboard" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
