@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Business News</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Business News</div>
+    <div class="page-subtitle">
+      Real estate, development, growth, new jobs, and new Starbucks openings in the cities we've got deals in.
+      <% if (lastUpdated) { %>
+        Last updated <%= new Date(lastUpdated).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) %>.
+      <% } %>
+    </div>
+
+    <% if (byCity.length === 0) { %>
+      <div class="card">
+        <div class="empty-state">
+          No stories yet - the daily news check hasn't run yet, or hasn't found anything new. Check back tomorrow.
+        </div>
+      </div>
+    <% } else { %>
+      <% byCity.forEach(function(group) { %>
+        <div class="page-title" style="font-size:18px;"><%= group.city %>, <%= group.state %></div>
+        <div class="news-grid">
+          <% group.stories.forEach(function(story) { %>
+            <a class="news-card" href="<%= story.url %>" target="_blank" rel="noopener noreferrer">
+              <span class="badge news-category-<%= story.category %>"><%= categoryLabels[story.category] || story.category %></span>
+              <h3><%= story.headline %></h3>
+              <% if (story.summary) { %>
+                <p><%= story.summary %></p>
+              <% } %>
+              <div class="news-meta">
+                <% if (story.source) { %><span><%= story.source %></span><% } %>
+                <% if (story.published_at) { %>
+                  <span><%= new Date(story.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+                <% } %>
+              </div>
+            </a>
+          <% }) %>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+</body>
+</html>
