@@ -95,6 +95,21 @@
                   <textarea id="<%= f.key %>" name="<%= f.key %>" <%= f.required ? 'required' : '' %>><%= formValues[f.key] || '' %></textarea>
                 <% } else if (f.type === 'date') { %>
                   <input type="date" id="<%= f.key %>" name="<%= f.key %>" value="<%= formValues[f.key] || '' %>" <%= f.required ? 'required' : '' %> />
+                <% } else if (f.type === 'state_select') { %>
+                  <% const selectedState = formValues[f.key] || f.default || ''; %>
+                  <select id="<%= f.key %>" name="<%= f.key %>" class="state-select" <%= f.required ? 'required' : '' %>
+                          onchange="onStateChange(this)">
+                    <option value="">Select a state&hellip;</option>
+                    <% Object.keys(stateNames).forEach(function(code) { %>
+                      <option value="<%= code %>" <%= selectedState === code ? 'selected' : '' %>><%= stateNames[code] %></option>
+                    <% }) %>
+                  </select>
+                <% } else if (f.type === 'county_select') { %>
+                  <% const selectedCounty = formValues[f.key] || ''; %>
+                  <select id="<%= f.key %>" name="<%= f.key %>" class="county-select"
+                          data-depends-on="<%= f.dependsOn %>" data-selected="<%= selectedCounty %>" <%= f.required ? 'required' : '' %>>
+                    <option value="">Select a state first&hellip;</option>
+                  </select>
                 <% } else { %>
                   <input type="text" id="<%= f.key %>" name="<%= f.key %>" value="<%= formValues[f.key] || '' %>" <%= f.required ? 'required' : '' %> />
                 <% } %>
@@ -112,6 +127,43 @@
   </div>
 
   <script>
+    var COUNTIES_BY_STATE = <%- JSON.stringify(countiesByState) %>;
+
+    function populateCountySelect(countySelect, stateCode, selectedValue) {
+      var counties = (stateCode && COUNTIES_BY_STATE[stateCode]) || [];
+      countySelect.innerHTML = '';
+      var placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = counties.length ? 'Select a county…' : 'Select a state first…';
+      countySelect.appendChild(placeholder);
+      counties.forEach(function (countyName) {
+        var opt = document.createElement('option');
+        opt.value = countyName;
+        opt.textContent = countyName;
+        if (selectedValue && selectedValue === countyName) opt.selected = true;
+        countySelect.appendChild(opt);
+      });
+    }
+
+    function onStateChange(stateSelect) {
+      var countySelect = stateSelect.closest('form').querySelector(
+        '.county-select[data-depends-on="' + stateSelect.id + '"]'
+      );
+      if (countySelect) populateCountySelect(countySelect, stateSelect.value, null);
+    }
+
+    // On page load, populate every county dropdown from its paired state
+    // dropdown's current value (handles both a fresh form with a default
+    // state, like Novation's "OH", and a re-render after a validation error
+    // where the user had already picked a state and county).
+    document.querySelectorAll('.county-select').forEach(function (countySelect) {
+      var stateSelect = document.getElementById(countySelect.dataset.dependsOn);
+      var selected = countySelect.dataset.selected || '';
+      if (stateSelect) {
+        populateCountySelect(countySelect, stateSelect.value, selected);
+      }
+    });
+
     function addSignerRow(btn, roleKey) {
       const group = btn.closest('.multi-signer-group');
       const entry = document.createElement('div');

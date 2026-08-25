@@ -287,7 +287,7 @@ table.history th {
   color: var(--navy);
 }
 
-.field input, .field textarea {
+.field input, .field textarea, .field select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -298,7 +298,7 @@ table.history th {
   color: var(--text);
 }
 
-.field input:focus, .field textarea:focus {
+.field input:focus, .field textarea:focus, .field select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15);

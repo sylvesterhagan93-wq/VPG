@@ -100,6 +100,15 @@ Everything about each document type — its signer roles, its form fields, and
 `config/agreementTypes.js` and `services/pdfGenerator.js`. Current fields
 per type:
 
+Every document type has a **State** and **County** dropdown for the
+property's location — pick the state first and the county dropdown fills in
+with just that state's counties (all 50 states + DC, all 3,143 counties).
+The generated PDF text uses whatever you picked (e.g. "Located in Summit
+County, Ohio."), so it always matches the actual property location instead
+of relying on typed-in text. This is separate from Novation's existing
+"Governing Law State" field, which is about which state's law governs the
+contract, not where the property sits.
+
 Purchase, Novation, and Assignment each have their own **"Escrow / Title
 Company"** section on the form, since you use a different title company deal
 to deal — company name (required), contact person, phone, email, and

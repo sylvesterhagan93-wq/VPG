@@ -3,6 +3,7 @@ const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
 const { sendAgreementForSignature } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
+const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 
 const router = express.Router();
 
@@ -72,6 +73,8 @@ router.get("/agreements/new/:type", (req, res) => {
     multiSignerEntries: buildMultiSignerEntries(typeDef),
     userName: req.session.userName,
     vpgPrincipal: VPG_PRINCIPAL,
+    stateNames: STATE_NAMES,
+    countiesByState: COUNTIES_BY_STATE,
   });
 });
 
@@ -136,6 +139,8 @@ router.post("/agreements/new/:type", async (req, res) => {
       multiSignerEntries: buildMultiSignerEntries(typeDef, body),
       userName: req.session.userName,
       vpgPrincipal: VPG_PRINCIPAL,
+      stateNames: STATE_NAMES,
+      countiesByState: COUNTIES_BY_STATE,
     });
   }
 
@@ -195,6 +200,8 @@ router.post("/agreements/new/:type", async (req, res) => {
       multiSignerEntries: buildMultiSignerEntries(typeDef, body),
       userName: req.session.userName,
       vpgPrincipal: VPG_PRINCIPAL,
+      stateNames: STATE_NAMES,
+      countiesByState: COUNTIES_BY_STATE,
     });
   }
 });

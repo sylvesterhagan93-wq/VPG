@@ -1,6 +1,7 @@
 const PDFDocument = require("pdfkit");
 const { getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE } = require("../config/agreementTypes");
 const { flattenSigners, entriesForRole, namesForRole, joinNames } = require("./signerUtils");
+const { STATE_NAMES } = require("../config/usLocations");
 
 /**
  * Builds the PDF for the given agreement so it can be sent to HelloSign for
@@ -76,6 +77,29 @@ function escrowLine(fields) {
   return parts.length ? parts.join(", ") : "____________________";
 }
 
+/**
+ * Full state name for a 2-letter postal code selected from the state
+ * dropdown (falls back to whatever was stored, in case of old/blank data).
+ */
+function stateFullName(code) {
+  if (!code) return "____________";
+  return STATE_NAMES[String(code).toUpperCase()] || code;
+}
+
+/**
+ * "<County>, <State>" for the property location, e.g. "Summit County, Ohio"
+ * or "Miami-Dade County, Florida". The county value already carries its
+ * state-correct suffix (County/Parish/Borough/Census Area/Municipality/city)
+ * from the dropdown data in config/usLocations.js, so it is used as-is -
+ * never append " County" again here.
+ */
+function locationLine(fields) {
+  const county = fields.property_county && String(fields.property_county).trim();
+  const state = stateFullName(fields.property_state);
+  if (!county) return `____________________, ${state}`;
+  return `${county}, ${state}`;
+}
+
 function money(v) {
   if (!v) return "____________";
   let trimmed = String(v).trim();
@@ -128,7 +152,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
 
     heading("1. PROPERTY DESCRIPTION.");
     body(`Street address, city, state, zip: ${fields.property_address || "____________________"}`);
-    body(`Located in ${fields.county_line || "____________________"}`);
+    body(`Located in ${locationLine(fields)}.`);
 
     heading("2. PURCHASE PRICE.");
     body(`Buyer agrees to pay Seller ${money(fields.purchase_price)} ("Purchase Price").`);
@@ -269,6 +293,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
 
     doc.font("Helvetica-Bold").fontSize(13).text("ASSIGNMENT OF SALES CONTRACT FOR REAL ESTATE", { align: "center" });
     doc.fontSize(10.5).font("Helvetica").text(`Address: ${fields.property_address || "____________________"}`, { align: "center" });
+    doc.fontSize(10.5).font("Helvetica").text(`Located in ${locationLine(fields)}.`, { align: "center" });
     doc.moveDown(1);
 
     body(
@@ -437,7 +462,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     heading("PROPERTY DESCRIPTION.");
     body(`Street address, city, state, zip: ${fields.property_address || "____________________"}`);
-    body(`Located in ${fields.county_name || "____________________"} County, OH.`);
+    body(`Located in ${locationLine(fields)}.`);
 
     heading("PURCHASE PRICE.");
     body(`Buyer agrees to pay Seller ${money(fields.purchase_price)} ("Purchase Price").`);
@@ -701,7 +726,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     body(
       `2. NOTICE OF INTEREST. Notice is hereby given that ${BUYER_ENTITY_NAME} ("Buyer") has an interest in that ` +
-      `certain real property situated in ${fields.county_name || "____________________"} County, State of Ohio, ` +
+      `certain real property situated in ${locationLine(fields)}, ` +
       "by virtue of a signed Purchase Agreement with the sellers for acquisition of the real property with " +
       "inclusively agreed. This serves as a notice of interest, all parties agree."
     );
@@ -761,6 +786,7 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
 
     doc.font("Helvetica-Bold").fontSize(10.5).text("Property Address:");
     doc.font("Helvetica").fontSize(10.5).text(fields.property_address || "____________________");
+    doc.font("Helvetica").fontSize(10.5).text(`Located in ${locationLine(fields)}.`);
     doc.moveDown(0.8);
 
     body("This Addendum modifies the existing Purchase Agreement for the property referenced above.");
