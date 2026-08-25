@@ -6,6 +6,7 @@ const { normalizeMultiEntries } = require("../services/signerUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 const { TITLE_COMPANIES } = require("../config/titleCompanies");
 const { getClevelandWeather } = require("../services/weather");
+const requireAdmin = require("../middleware/requireAdmin");
 
 const router = express.Router();
 
@@ -94,11 +95,12 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const [result, clevelandWeather] = await Promise.all([
+    const [result, clevelandWeather, deletedAgreementResult] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
          FROM agreements
          JOIN users ON users.id = agreements.sent_by_user_id
+         WHERE agreements.deleted_at IS NULL
          ORDER BY agreements.created_at DESC
          LIMIT 25`
       ),
@@ -108,6 +110,16 @@ router.get("/dashboard", async (req, res, next) => {
         console.error("Could not fetch Cleveland weather:", err.message);
         return null;
       }),
+      // If we just got redirected here right after an admin deleted an
+      // agreement (?deleted=<id>), look it up so the undo banner can name
+      // it - only if it's actually still soft-deleted, so a stale or
+      // tampered-with query param can't conjure a fake banner.
+      req.query.deleted
+        ? db.query(
+            `SELECT id, type, property_address, party_summary FROM agreements WHERE id = $1 AND deleted_at IS NOT NULL`,
+            [req.query.deleted]
+          )
+        : Promise.resolve({ rows: [] }),
     ]);
 
     res.render("dashboard", {
@@ -116,7 +128,38 @@ router.get("/dashboard", async (req, res, next) => {
       types: Object.values(AGREEMENT_TYPES),
       recent: result.rows,
       clevelandWeather,
+      deletedAgreement: deletedAgreementResult.rows[0] || null,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Soft-deletes an agreement from Recent Activity - admin only (Sylvester
+// explicitly asked that no other team member be able to remove a sent
+// agreement from the record). This never hard-deletes the row: it just
+// sets deleted_at, which the /dashboard query above filters out, so an
+// Undo (see the route right below) can bring it straight back with
+// everything intact - HelloSign request id, form data, signed status, all
+// of it.
+router.post("/agreements/:id/delete", requireAdmin, async (req, res, next) => {
+  try {
+    await db.query(`UPDATE agreements SET deleted_at = now() WHERE id = $1`, [req.params.id]);
+    res.redirect(`/dashboard?deleted=${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Undo for the delete above - clears deleted_at so the agreement reappears
+// in Recent Activity exactly as it was. Also admin-only: while only an
+// admin can delete in the first place, gating restore the same way keeps
+// the two actions symmetric and avoids relying on "well only an admin
+// would have the undo link anyway."
+router.post("/agreements/:id/restore", requireAdmin, async (req, res, next) => {
+  try {
+    await db.query(`UPDATE agreements SET deleted_at = NULL WHERE id = $1`, [req.params.id]);
+    res.redirect("/dashboard");
   } catch (err) {
     next(err);
   }

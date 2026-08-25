@@ -43,6 +43,18 @@
     </div>
 
     <div class="page-title" style="font-size:18px;">Recent Activity</div>
+
+    <% if (isAdmin && deletedAgreement) { %>
+      <div class="alert info" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span>
+          Deleted the <%= deletedAgreement.type.charAt(0).toUpperCase() + deletedAgreement.type.slice(1) %> agreement<% if (deletedAgreement.property_address) { %> for <strong><%= deletedAgreement.property_address %></strong><% } else if (deletedAgreement.party_summary) { %> for <strong><%= deletedAgreement.party_summary %></strong><% } %> from Recent Activity.
+        </span>
+        <form method="POST" action="/agreements/<%= deletedAgreement.id %>/restore" style="margin:0;">
+          <button type="submit" class="btn-tiny reactivate">Undo</button>
+        </form>
+      </div>
+    <% } %>
+
     <div class="card">
       <% if (recent.length === 0) { %>
         <div class="empty-state">No agreements sent yet. Pick a document type above to get started.</div>
@@ -68,9 +80,15 @@
                 <td><%= a.sent_by_name %></td>
                 <td><span class="badge <%= a.status %>"><%= a.status.replace('_', ' ') %></span></td>
                 <td><%= new Date(a.created_at).toLocaleString('en-US') %></td>
-                <td>
+                <td style="white-space:nowrap;">
                   <% if (a.status === 'signed') { %>
                     <a class="btn-tiny download-link" href="/agreements/<%= a.id %>/download">Download</a>
+                  <% } %>
+                  <% if (isAdmin) { %>
+                    <form method="POST" action="/agreements/<%= a.id %>/delete" style="display:inline;"
+                          onsubmit="return confirm('Remove this agreement from Recent Activity? You can undo it right after.');">
+                      <button type="submit" class="btn-tiny">Delete</button>
+                    </form>
                   <% } %>
                 </td>
               </tr>
