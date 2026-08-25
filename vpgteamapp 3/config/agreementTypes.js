@@ -50,8 +50,10 @@ const AGREEMENT_TYPES = {
     ],
     fields: [
       { key: "agreement_date", label: "Agreement Date", type: "date", required: true },
-      { key: "property_address", label: "Property Address (street, city, state, ZIP)", type: "text", required: true },
+      { key: "property_address", label: "Street Address", type: "text", required: true },
+      { key: "property_city", label: "City", type: "text", required: true },
       { key: "property_state", label: "Property State", type: "state_select", required: true },
+      { key: "property_zip", label: "ZIP Code", type: "text", required: true },
       { key: "property_county", label: "Property County", type: "county_select", required: true, dependsOn: "property_state" },
       { key: "purchase_price", label: "Purchase Price ($)", type: "text", required: true },
       { key: "deposit_amount", label: "Non-Refundable Deposit Held in Escrow ($)", type: "text", required: true },
@@ -74,8 +76,10 @@ const AGREEMENT_TYPES = {
     ],
     fields: [
       { key: "agreement_date", label: "Agreement Date", type: "date", required: true },
-      { key: "property_address", label: "Property Address (street, city, state, ZIP)", type: "text", required: true },
+      { key: "property_address", label: "Street Address", type: "text", required: true },
+      { key: "property_city", label: "City", type: "text", required: true },
       { key: "property_state", label: "Property State", type: "state_select", required: true, default: "OH" },
+      { key: "property_zip", label: "ZIP Code", type: "text", required: true },
       { key: "property_county", label: "Property County", type: "county_select", required: true, dependsOn: "property_state" },
       { key: "purchase_price", label: "Purchase Price ($)", type: "text", required: true },
       { key: "deposit_amount", label: "Deposit Held in Escrow ($)", type: "text", required: true },
@@ -104,8 +108,10 @@ const AGREEMENT_TYPES = {
     ],
     fields: [
       { key: "agreement_date", label: "Agreement Date (signed and delivered as of)", type: "date", required: true },
-      { key: "property_address", label: "Property Address", type: "text", required: true },
+      { key: "property_address", label: "Street Address", type: "text", required: true },
+      { key: "property_city", label: "City", type: "text", required: true },
       { key: "property_state", label: "Property State", type: "state_select", required: true },
+      { key: "property_zip", label: "ZIP Code", type: "text", required: true },
       { key: "property_county", label: "Property County", type: "county_select", required: true, dependsOn: "property_state" },
       { key: "original_seller_name", label: "Original Seller(s) (from the Purchase Agreement)", type: "text", required: true },
       { key: "original_agreement_date", label: "Original Purchase Agreement Date", type: "date", required: true },
@@ -126,8 +132,10 @@ const AGREEMENT_TYPES = {
     // there's no Buyer/VPG signature line on it.
     signers: [{ key: "seller", label: "Seller(s)", multiple: true, addButtonLabel: "Seller" }],
     fields: [
-      { key: "property_address", label: "Property Address (street, city, state, ZIP)", type: "text", required: true },
+      { key: "property_address", label: "Street Address", type: "text", required: true },
+      { key: "property_city", label: "City", type: "text", required: true },
       { key: "property_state", label: "Property State", type: "state_select", required: true },
+      { key: "property_zip", label: "ZIP Code", type: "text", required: true },
       { key: "property_county", label: "Property County", type: "county_select", required: true, dependsOn: "property_state" },
       { key: "amended_price", label: "Amended Purchase Price ($)", type: "text", required: true },
       { key: "payment_terms", label: "Payment Terms (e.g., CASH)", type: "text", default: "CASH" },

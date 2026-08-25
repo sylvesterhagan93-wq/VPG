@@ -2,6 +2,7 @@ const PDFDocument = require("pdfkit");
 const { getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE } = require("../config/agreementTypes");
 const { flattenSigners, entriesForRole, namesForRole, joinNames } = require("./signerUtils");
 const { STATE_NAMES } = require("../config/usLocations");
+const { formatPropertyAddress } = require("./addressUtils");
 
 /**
  * Builds the PDF for the given agreement so it can be sent to HelloSign for
@@ -100,6 +101,15 @@ function locationLine(fields) {
   return `${county}, ${state}`;
 }
 
+/**
+ * Full mailing-style property address for display on the document (e.g.
+ * "123 Main St, Toledo, OH 43609"), built from the separate Street Address /
+ * City / State / ZIP fields via services/addressUtils.js.
+ */
+function propertyAddressLine(fields) {
+  return formatPropertyAddress(fields) || "____________________";
+}
+
 function money(v) {
   if (!v) return "____________";
   let trimmed = String(v).trim();
@@ -151,7 +161,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
     );
 
     heading("1. PROPERTY DESCRIPTION.");
-    body(`Street address, city, state, zip: ${fields.property_address || "____________________"}`);
+    body(`Street address, city, state, zip: ${propertyAddressLine(fields)}`);
     body(`Located in ${locationLine(fields)}.`);
 
     heading("2. PURCHASE PRICE.");
@@ -292,7 +302,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     const body = (text) => doc.font("Helvetica").fontSize(10.5).text(text).moveDown(0.6);
 
     doc.font("Helvetica-Bold").fontSize(13).text("ASSIGNMENT OF SALES CONTRACT FOR REAL ESTATE", { align: "center" });
-    doc.fontSize(10.5).font("Helvetica").text(`Address: ${fields.property_address || "____________________"}`, { align: "center" });
+    doc.fontSize(10.5).font("Helvetica").text(`Address: ${propertyAddressLine(fields)}`, { align: "center" });
     doc.fontSize(10.5).font("Helvetica").text(`Located in ${locationLine(fields)}.`, { align: "center" });
     doc.moveDown(1);
 
@@ -461,7 +471,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     );
 
     heading("PROPERTY DESCRIPTION.");
-    body(`Street address, city, state, zip: ${fields.property_address || "____________________"}`);
+    body(`Street address, city, state, zip: ${propertyAddressLine(fields)}`);
     body(`Located in ${locationLine(fields)}.`);
 
     heading("PURCHASE PRICE.");
@@ -588,7 +598,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     body(
       `WHEREAS, Seller and Buyer entered into an Agreement of Sale dated ${formatLongDate(fields.agreement_date)} ` +
-      `(the "Agreement of Sale"), for the sale of Seller's real estate at ${fields.property_address || "____________________"} ` +
+      `(the "Agreement of Sale"), for the sale of Seller's real estate at ${propertyAddressLine(fields)} ` +
       `(the "Property"), for a purchase price of ${money(fields.purchase_price)} net price; and`
     );
 
@@ -713,7 +723,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     body(
       "Said Attorney-in-Fact shall have full power and authority to undertake and perform the following acts on " +
-      `my behalf, related to (the "Property: ${fields.property_address || "____________________"}") for ` +
+      `my behalf, related to (the "Property: ${propertyAddressLine(fields)}") for ` +
       `${money(fields.seller_net_proceeds)} net price:`
     );
 
@@ -785,7 +795,7 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
     doc.moveDown(0.8);
 
     doc.font("Helvetica-Bold").fontSize(10.5).text("Property Address:");
-    doc.font("Helvetica").fontSize(10.5).text(fields.property_address || "____________________");
+    doc.font("Helvetica").fontSize(10.5).text(propertyAddressLine(fields));
     doc.font("Helvetica").fontSize(10.5).text(`Located in ${locationLine(fields)}.`);
     doc.moveDown(0.8);
 

@@ -3,6 +3,7 @@ const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
 const { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
+const { formatPropertyAddress } = require("../services/addressUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 const { TITLE_COMPANIES } = require("../config/titleCompanies");
 const { getClevelandWeather } = require("../services/weather");
@@ -389,6 +390,12 @@ router.post("/agreements/new/:type", async (req, res) => {
     .filter(Boolean)
     .join(" & ");
 
+  // Full mailing-style address (street, city, state, ZIP) built from the
+  // separate form fields, stored on the agreement row so Recent Activity,
+  // the download filename, etc. always show the complete address - not just
+  // the street.
+  const fullPropertyAddress = formatPropertyAddress(fields);
+
   try {
     const result = await sendAgreementForSignature({
       type: typeDef.key,
@@ -405,7 +412,7 @@ router.post("/agreements/new/:type", async (req, res) => {
         typeDef.key,
         req.session.userId,
         partySummary,
-        fields.property_address || null,
+        fullPropertyAddress || null,
         JSON.stringify({ fields, signers }),
         result.status,
         result.requestId,
@@ -422,7 +429,7 @@ router.post("/agreements/new/:type", async (req, res) => {
         typeDef.key,
         req.session.userId,
         partySummary,
-        fields.property_address || null,
+        fullPropertyAddress || null,
         JSON.stringify({ fields, signers }),
         err.message,
       ]
