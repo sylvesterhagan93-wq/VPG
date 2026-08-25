@@ -243,6 +243,65 @@ a:hover { text-decoration: underline; }
 .news-category-starbucks { background: #fff4e0; color: #9a6400; }
 .news-category-growth { background: #e4f7f5; color: #147a70; }
 
+.merch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.merch-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.merch-card:hover {
+  box-shadow: 0 4px 16px rgba(18, 35, 63, 0.08);
+  transform: translateY(-1px);
+}
+
+.merch-card-image {
+  background: #f4f6fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.merch-card-image img {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.merch-card-body {
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.merch-card-body h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.merch-card-detail {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.merch-card-body .btn {
+  align-self: flex-start;
+}
+
 table.history {
   width: 100%;
   border-collapse: collapse;

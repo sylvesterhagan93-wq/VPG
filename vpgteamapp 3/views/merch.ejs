@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Merch</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Merch</div>
+    <div class="page-subtitle">
+      Order VPG gear straight from CustomInk. Hit "Buy Now" on an item to order your own size, or
+      "Buy With a Group" to collect sizes across the team and split payment - CustomInk handles the
+      order, payment, and shipping from there.
+    </div>
+
+    <% if (items.length === 0) { %>
+      <div class="card">
+        <div class="empty-state">No merch items yet - check back soon.</div>
+      </div>
+    <% } else { %>
+      <div class="merch-grid">
+        <% items.forEach(function(item) { %>
+          <div class="merch-card">
+            <% if (item.imageUrl) { %>
+              <div class="merch-card-image">
+                <img src="<%= item.imageUrl %>" alt="<%= item.name %>" loading="lazy" />
+              </div>
+            <% } %>
+            <div class="merch-card-body">
+              <h3><%= item.name %></h3>
+              <p class="merch-card-detail"><%= item.product %><% if (item.color) { %> &middot; <%= item.color %><% } %></p>
+              <a class="btn" href="<%= item.shareUrl %>" target="_blank" rel="noopener noreferrer">Order on CustomInk</a>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>
