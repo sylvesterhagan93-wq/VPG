@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
-const { sendAgreementForSignature, downloadSignedPdf } = require("../services/hellosign");
+const { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 
@@ -24,8 +24,48 @@ function buildMultiSignerEntries(typeDef, body) {
   return map;
 }
 
+// Real signature requests get a request id from HelloSign; mock sends
+// (no API key configured) get a "mock-<timestamp>" placeholder that was
+// never actually sent, so there's nothing to check status on.
+function isRealHelloSignRequest(requestId) {
+  return !!requestId && !requestId.startsWith("mock-");
+}
+
+// Reconciles any "sent" agreement's status directly against HelloSign
+// before the dashboard renders, so "signed" shows up immediately - this
+// doesn't depend on the HelloSign Event Callback URL being configured
+// (routes/webhooks.js handles that in real time when it is set up; this is
+// the fallback/complement that makes the dashboard correct either way).
+// Best-effort: a HelloSign hiccup here should never break the dashboard.
+async function reconcilePendingStatuses() {
+  if (!process.env.HELLOSIGN_API_KEY) return;
+
+  try {
+    const pending = await db.query(
+      `SELECT id, hellosign_request_id FROM agreements WHERE status = 'sent'`
+    );
+    for (const row of pending.rows) {
+      if (!isRealHelloSignRequest(row.hellosign_request_id)) continue;
+      try {
+        const status = await checkSignatureRequestStatus(row.hellosign_request_id);
+        if (status === "signed") {
+          await db.query(`UPDATE agreements SET status = 'signed', signed_at = now() WHERE id = $1`, [row.id]);
+        } else if (status === "declined") {
+          await db.query(`UPDATE agreements SET status = 'declined' WHERE id = $1`, [row.id]);
+        }
+      } catch (err) {
+        console.error(`Could not check HelloSign status for agreement ${row.id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error("Could not load pending agreements to reconcile:", err.message);
+  }
+}
+
 router.get("/dashboard", async (req, res, next) => {
   try {
+    await reconcilePendingStatuses();
+
     const result = await db.query(
       `SELECT agreements.*, users.name AS sent_by_name
        FROM agreements

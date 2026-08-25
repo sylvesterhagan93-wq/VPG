@@ -119,4 +119,30 @@ async function downloadSignedPdf(requestId) {
   return Buffer.from(response.data);
 }
 
-module.exports = { sendAgreementForSignature, downloadSignedPdf };
+/**
+ * Checks HelloSign directly for whether a signature request is fully
+ * signed or declined. This is a fallback/complement to the webhook
+ * (routes/webhooks.js): the webhook updates status the moment HelloSign
+ * calls back, but that requires the Event Callback URL to actually be set
+ * in the HelloSign account first - this lets the dashboard reconcile
+ * status on its own by asking HelloSign directly, so it shows the truth
+ * even before that one-time setup step is done (or if a callback is ever
+ * missed).
+ */
+async function checkSignatureRequestStatus(requestId) {
+  const apiKey = process.env.HELLOSIGN_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await axios.get(`${HELLOSIGN_API_BASE}/signature_request/${requestId}`, {
+    auth: { username: apiKey, password: "" },
+  });
+
+  const sr = response.data?.signature_request;
+  if (!sr) return null;
+
+  if (sr.is_complete) return "signed";
+  if ((sr.signatures || []).some((s) => s.status_code === "declined")) return "declined";
+  return "sent";
+}
+
+module.exports = { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus };
