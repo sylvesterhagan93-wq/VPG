@@ -6,6 +6,7 @@ const path = require("path");
 const requireAuth = require("./middleware/requireAuth");
 const authRoutes = require("./routes/auth");
 const agreementRoutes = require("./routes/agreements");
+const offerLetterRoutes = require("./routes/offerLetters");
 const teamRoutes = require("./routes/team");
 const dealRoutes = require("./routes/deals");
 const newsRoutes = require("./routes/news");
@@ -45,6 +46,7 @@ app.use(webhookRoutes);
 
 app.use(authRoutes);
 app.use(requireAuth, agreementRoutes);
+app.use(requireAuth, offerLetterRoutes);
 app.use(requireAuth, dealRoutes);
 app.use(requireAuth, newsRoutes);
 app.use(requireAuth, merchRoutes);
@@ -64,5 +66,8 @@ app.listen(PORT, () => {
   console.log(`VPGteamapp running on http://localhost:${PORT}`);
   if (!process.env.HELLOSIGN_API_KEY) {
     console.log("HELLOSIGN_API_KEY not set - running in MOCK send mode.");
+  }
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.log("GMAIL_USER/GMAIL_APP_PASSWORD not set - offer letters will send in MOCK mode.");
   }
 });

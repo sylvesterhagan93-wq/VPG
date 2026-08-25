@@ -40,6 +40,11 @@
           <span class="btn-label">Fill out &amp; send &rarr;</span>
         </a>
       <% }) %>
+      <a class="type-card" href="/offer-letters/new">
+        <h3>Offer Letter</h3>
+        <p>Emailed purchase proposal for a seller - not a signature request, just the branded PDF attached to an email.</p>
+        <span class="btn-label">Fill out &amp; email &rarr;</span>
+      </a>
     </div>
 
     <div class="page-title" style="font-size:18px;">Recent Activity</div>
@@ -106,6 +111,41 @@
                       <button type="submit" class="btn-tiny">Delete</button>
                     </form>
                   <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="page-title" style="font-size:18px;">Offer Letters</div>
+
+    <div class="card">
+      <% if (!offerLetters || offerLetters.length === 0) { %>
+        <div class="empty-state">No offer letters sent yet. Use the Offer Letter card above to send one.</div>
+      <% } else { %>
+        <table class="history">
+          <thead>
+            <tr>
+              <th>Seller</th>
+              <th>Property</th>
+              <th>Sent By</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% offerLetters.forEach(function(o) { %>
+              <tr>
+                <td><%= o.seller_name %></td>
+                <td><%= o.property_address %></td>
+                <td><%= o.sent_by_name %></td>
+                <td><span class="badge <%= o.status %>"><%= o.status.replace('_', ' ') %></span></td>
+                <td><%= new Date(o.created_at).toLocaleString('en-US') %></td>
+                <td style="white-space:nowrap;">
+                  <a class="btn-tiny download-link" href="/offer-letters/<%= o.id %>/download">Download</a>
                 </td>
               </tr>
             <% }) %>

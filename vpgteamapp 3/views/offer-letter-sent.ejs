@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Offer Letter Sent</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Offer Letter Sent</div>
+
+    <% if (result.mode === 'mock') { %>
+      <div class="alert info">
+        <strong>Mock mode:</strong> Gmail isn't connected yet, so this was not actually emailed. The proposal PDF
+        was generated successfully and this send was logged as <span class="badge mock_sent">mock sent</span>.
+        Add your Gmail App Password to send for real.
+      </div>
+    <% } else { %>
+      <div class="alert info">
+        Emailed to <strong><%= fields.seller_name %></strong> (<%= fields.seller_email %>) with the proposal PDF
+        attached, from sylvesterhagan93@gmail.com.
+      </div>
+    <% } %>
+
+    <div class="card">
+      <p><strong>Property:</strong> <%= fields.property_address %></p>
+      <p><strong>Subject:</strong> <%= fields.email_subject %></p>
+      <p>You can find this in the Offer Letters history on the <a href="/dashboard">dashboard</a>.</p>
+      <div style="display:flex; gap:12px;">
+        <a href="/offer-letters/new" class="btn">Send Another</a>
+        <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

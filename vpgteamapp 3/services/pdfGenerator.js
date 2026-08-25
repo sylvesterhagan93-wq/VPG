@@ -1054,4 +1054,19 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
   });
 }
 
-module.exports = { generateAgreementPdf };
+module.exports = {
+  generateAgreementPdf,
+  // Shared branding helpers, exported so other generated documents (e.g.
+  // services/offerLetterPdf.js) can reuse the exact same VPG letterhead,
+  // title style, section labels, footer, and brand colors instead of
+  // duplicating them.
+  drawLetterhead,
+  drawDocTitle,
+  boldLabel,
+  drawFooter,
+  money,
+  BRAND_NAVY,
+  BRAND_GREEN,
+  MUTED_GRAY,
+  RULE_GRAY,
+};

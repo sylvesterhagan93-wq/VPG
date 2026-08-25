@@ -101,7 +101,7 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const [result, clevelandWeather, deletedAgreementResult, resentAgreementResult] = await Promise.all([
+    const [result, clevelandWeather, deletedAgreementResult, resentAgreementResult, offerLettersResult] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
          FROM agreements
@@ -131,6 +131,18 @@ router.get("/dashboard", async (req, res, next) => {
       req.query.resent
         ? db.query(`SELECT id, type, property_address, party_summary FROM agreements WHERE id = $1`, [req.query.resent])
         : Promise.resolve({ rows: [] }),
+      // Offer Letters (emailed proposals, not HelloSign signature requests)
+      // - a separate, smaller history table on the dashboard since they
+      // don't carry the sent/signed lifecycle the Recent Activity table is
+      // built around.
+      db.query(
+        `SELECT offer_letters.*, users.name AS sent_by_name
+         FROM offer_letters
+         JOIN users ON users.id = offer_letters.sent_by_user_id
+         WHERE offer_letters.deleted_at IS NULL
+         ORDER BY offer_letters.created_at DESC
+         LIMIT 10`
+      ),
     ]);
 
     let resendNotice = null;
@@ -152,6 +164,7 @@ router.get("/dashboard", async (req, res, next) => {
       clevelandWeather,
       deletedAgreement: deletedAgreementResult.rows[0] || null,
       resendNotice,
+      offerLetters: offerLettersResult.rows,
     });
   } catch (err) {
     next(err);

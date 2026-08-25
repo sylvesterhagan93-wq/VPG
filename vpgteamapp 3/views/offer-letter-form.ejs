@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Offer Letter</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Send an Offer Letter</div>
+    <div class="page-subtitle">
+      An emailed proposal (not a signature request) - fill in the seller and property details, review the
+      message, and it goes out with the branded proposal PDF attached from sylvesterhagan93@gmail.com.
+    </div>
+
+    <% if (!emailConfigured) { %>
+      <div class="mock-note">
+        Gmail isn't connected yet (no App Password configured) - offer letters will generate the proposal PDF but
+        send in MOCK mode (nothing actually emails out) until that's set up.
+      </div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <div class="card">
+      <form method="POST" action="/offer-letters/send" id="offer-letter-form">
+
+        <div class="section-label">Seller &amp; Property</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="seller_name">Seller Name *</label>
+            <input type="text" id="seller_name" name="seller_name" value="<%= formValues.seller_name %>" required />
+          </div>
+          <div class="field">
+            <label for="seller_email">Seller Email *</label>
+            <input type="email" id="seller_email" name="seller_email" value="<%= formValues.seller_email %>" required />
+          </div>
+          <div class="field full">
+            <label for="property_address">Property Address *
+              <span class="you-tag">(street, city, state, ZIP)</span>
+            </label>
+            <input type="text" id="property_address" name="property_address" value="<%= formValues.property_address %>" required />
+          </div>
+        </div>
+
+        <div class="section-label">Option #1 &ndash; Cash Offer</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="cash_offer_amount">Cash Offer Amount ($) *</label>
+            <input type="text" id="cash_offer_amount" name="cash_offer_amount" value="<%= formValues.cash_offer_amount %>" placeholder="260000" required />
+          </div>
+          <div class="field">
+            <label for="cash_closing_timeframe">Closing Timeframe</label>
+            <input type="text" id="cash_closing_timeframe" name="cash_closing_timeframe" value="<%= formValues.cash_closing_timeframe %>" />
+          </div>
+        </div>
+
+        <div class="section-label">Option #2 &ndash; Concierge Sale</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="concierge_offer_amount">Potential Net Amount ($) *</label>
+            <input type="text" id="concierge_offer_amount" name="concierge_offer_amount" value="<%= formValues.concierge_offer_amount %>" placeholder="320000" required />
+          </div>
+          <div class="field">
+            <label for="concierge_closing_timeframe">Closing Timeframe</label>
+            <input type="text" id="concierge_closing_timeframe" name="concierge_closing_timeframe" value="<%= formValues.concierge_closing_timeframe %>" />
+          </div>
+          <div class="field full">
+            <label for="additional_notes">Additional Notes <span class="you-tag">(optional - appears at the bottom of the proposal)</span></label>
+            <textarea id="additional_notes" name="additional_notes"><%= formValues.additional_notes %></textarea>
+          </div>
+        </div>
+
+        <div class="section-label">Proposal Signature</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="signer_name">Signed By</label>
+            <input type="text" id="signer_name" name="signer_name" value="<%= formValues.signer_name %>" />
+          </div>
+          <div class="field">
+            <label for="signer_title">Title</label>
+            <input type="text" id="signer_title" name="signer_title" value="<%= formValues.signer_title %>" />
+          </div>
+        </div>
+
+        <div class="section-label">Email</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="email_subject">Subject *</label>
+            <input type="text" id="email_subject" name="email_subject" value="<%= formValues.email_subject %>" required />
+          </div>
+          <div class="field full">
+            <label for="email_body">Message *
+              <span class="you-tag">(pre-filled from your template - the property address updates automatically until you edit this box yourself)</span>
+            </label>
+            <textarea id="email_body" name="email_body" style="min-height: 220px;" required><%= formValues.email_body %></textarea>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; display:flex; gap:12px;">
+          <button type="submit" class="btn">Send Offer Letter</button>
+          <a href="/dashboard" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Keeps the pre-filled email message (and subject) in sync with the
+    // Property Address field, the same way a mail-merge would - but only for
+    // as long as the message/subject still exactly match what the template
+    // would have generated for the previous address. The moment the sender
+    // types their own wording into either box, that box stops auto-updating
+    // - checked by comparing current value to the expected template value
+    // rather than a one-time "dirty" flag, so this still works correctly
+    // after a server re-render (e.g. a validation error) where a previously
+    // customized message must not get silently overwritten again.
+    var addressInput = document.getElementById('property_address');
+    var subjectInput = document.getElementById('email_subject');
+    var bodyInput = document.getElementById('email_body');
+    var lastAddress = addressInput.value.trim();
+
+    function buildEmailBody(address) {
+      var addr = address || '[property address]';
+      return (
+        'Hi,\n' +
+        'It was great connecting with you regarding your property at ' + addr + '.\n\n' +
+        'I’ve attached our proposal outlining two different options for you to consider. One is designed for a ' +
+        'quicker and simpler cash closing, while the second provides an opportunity to potentially net significantly ' +
+        'more for the property with more additional time, effort and cooperation.\n\n' +
+        'Please keep in mind that we will need current photos of the home and the other structures on the property ' +
+        'to confirm their condition. Once we review those, we can confirm the numbers and determine whether we may ' +
+        'be able to offer more or need to adjust them based on the actual condition.\n\n' +
+        'Take a look at the attached proposal when you have a chance, and feel free to call or email me with any ' +
+        'questions. We’d love the opportunity to work with you and find the option that makes the most sense for ' +
+        'your situation.\n\n' +
+        'Thank you!\n' +
+        'Sylvester Hagan Jr.\n' +
+        'Venture Property Group, LLC'
+      );
+    }
+
+    function buildEmailSubject(address) {
+      return 'Property Purchase Proposal - ' + (address || '[property address]');
+    }
+
+    addressInput.addEventListener('input', function () {
+      var newAddr = addressInput.value.trim();
+      if (bodyInput.value === buildEmailBody(lastAddress)) {
+        bodyInput.value = buildEmailBody(newAddr);
+      }
+      if (subjectInput.value === buildEmailSubject(lastAddress)) {
+        subjectInput.value = buildEmailSubject(newAddr);
+      }
+      lastAddress = newAddr;
+    });
+  </script>
+</body>
+</html>
