@@ -17,6 +17,13 @@ const ASSIGNOR_TITLE = "Managing Member";
 // directly to the route.
 const VPG_PRINCIPAL = { name: "Sylvester Hagan", email: "sylvesterhagan93@gmail.com" };
 
+const { TITLE_COMPANIES } = require("./titleCompanies");
+// Novation pre-fills its Escrow / Title Company section with American Title
+// Solutions since that's who's used on nearly every Ohio deal - pulled from
+// the same saved-companies list the "Saved Company" dropdown uses
+// (config/titleCompanies.js), so the two never drift out of sync.
+const AMERICAN_TITLE_SOLUTIONS = TITLE_COMPANIES.find((c) => c.name === "American Title Solutions");
+
 // Every deal can use a different title/escrow company, so this same set of
 // fields is reused (with a shared "Escrow / Title Company" form section) on
 // Purchase, Novation, and Assignment agreements - only the company name is
@@ -73,11 +80,11 @@ const AGREEMENT_TYPES = {
       { key: "purchase_price", label: "Purchase Price ($)", type: "text", required: true },
       { key: "deposit_amount", label: "Deposit Held in Escrow ($)", type: "text", required: true },
       ...escrowFields({
-        escrow_company: "American Title Solutions",
-        escrow_contact_name: "Stephen Carter",
-        escrow_phone: "330-835-4430",
-        escrow_email: "Stephen@americantitlesolutions.com",
-        escrow_address: "275 Springside Drive, Suite 100, Akron, Ohio 44333",
+        escrow_company: AMERICAN_TITLE_SOLUTIONS.name,
+        escrow_contact_name: AMERICAN_TITLE_SOLUTIONS.contactName,
+        escrow_phone: AMERICAN_TITLE_SOLUTIONS.phone,
+        escrow_email: AMERICAN_TITLE_SOLUTIONS.email,
+        escrow_address: AMERICAN_TITLE_SOLUTIONS.address,
       }),
       { key: "closing_days", label: "Closing (business days from Effective Date)", type: "text", required: true },
       { key: "inspection_days", label: "Inspection Period (business days from Effective Date)", type: "text", required: true },

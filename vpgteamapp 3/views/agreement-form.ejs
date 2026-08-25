@@ -87,6 +87,17 @@
         %>
         <% groups.forEach(function(group) { %>
           <div class="section-label"><%= group.label %></div>
+          <% if (group.label === "Escrow / Title Company") { %>
+            <div class="field full" style="margin-bottom:14px;">
+              <label for="saved_title_company">Saved Company <span class="you-tag">(optional - fills in the fields below, still fully editable)</span></label>
+              <select id="saved_title_company" onchange="applySavedTitleCompany(this)">
+                <option value="">Choose a saved company, or just type below for a new one&hellip;</option>
+                <% titleCompanies.forEach(function(c, idx) { %>
+                  <option value="<%= idx %>"><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+          <% } %>
           <div class="form-grid">
             <% group.fields.forEach(function(f) { %>
               <div class="field <%= f.type === 'textarea' ? 'full' : '' %>">
@@ -128,6 +139,27 @@
 
   <script>
     var COUNTIES_BY_STATE = <%- JSON.stringify(countiesByState) %>;
+    var TITLE_COMPANIES = <%- JSON.stringify(titleCompanies) %>;
+
+    // Fills in the Escrow / Title Company fields from the chosen saved
+    // company - the fields stay plain inputs the team can still edit or
+    // clear, so picking one is just a shortcut, not a lock.
+    function applySavedTitleCompany(select) {
+      var form = select.closest('form');
+      var idx = select.value;
+      if (idx === '') return;
+      var c = TITLE_COMPANIES[Number(idx)];
+      if (!c) return;
+      var setIfPresent = function (id, value) {
+        var input = form.querySelector('#' + id);
+        if (input) input.value = value || '';
+      };
+      setIfPresent('escrow_company', c.name);
+      setIfPresent('escrow_contact_name', c.contactName);
+      setIfPresent('escrow_phone', c.phone);
+      setIfPresent('escrow_email', c.email);
+      setIfPresent('escrow_address', c.address);
+    }
 
     function populateCountySelect(countySelect, stateCode, selectedValue) {
       var counties = (stateCode && COUNTIES_BY_STATE[stateCode]) || [];

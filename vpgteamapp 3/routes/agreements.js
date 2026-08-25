@@ -4,6 +4,7 @@ const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreement
 const { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
+const { TITLE_COMPANIES } = require("../config/titleCompanies");
 
 const router = express.Router();
 
@@ -142,6 +143,7 @@ router.get("/agreements/new/:type", (req, res) => {
     vpgPrincipal: VPG_PRINCIPAL,
     stateNames: STATE_NAMES,
     countiesByState: COUNTIES_BY_STATE,
+    titleCompanies: TITLE_COMPANIES,
   });
 });
 
@@ -208,6 +210,7 @@ router.post("/agreements/new/:type", async (req, res) => {
       vpgPrincipal: VPG_PRINCIPAL,
       stateNames: STATE_NAMES,
       countiesByState: COUNTIES_BY_STATE,
+      titleCompanies: TITLE_COMPANIES,
     });
   }
 
@@ -269,6 +272,7 @@ router.post("/agreements/new/:type", async (req, res) => {
       vpgPrincipal: VPG_PRINCIPAL,
       stateNames: STATE_NAMES,
       countiesByState: COUNTIES_BY_STATE,
+      titleCompanies: TITLE_COMPANIES,
     });
   }
 });

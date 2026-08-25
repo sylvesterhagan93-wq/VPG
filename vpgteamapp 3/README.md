@@ -168,6 +168,16 @@ to deal — company name (required), contact person, phone, email, and
 address. Fill in whatever you have; anything left blank just prints as a
 blank line in the PDF.
 
+At the top of that section there's a **"Saved Company"** dropdown with the
+title companies you use often — pick one and it fills in the fields below
+it for you, but every field stays fully editable, so a one-off or new title
+company on a given deal just gets typed in like normal. The saved list
+lives in `config/titleCompanies.js` — add, edit, or remove an entry there
+(name, contact, phone, email, address — any of them can be blank) and it
+shows up on every document type's dropdown automatically. Currently saved:
+American Title Solutions, Hometown Title Agency, Innovative Title, and
+Superior Title.
+
 Seller (on Purchase, Novation, and Addendum) and Assignee (on Assignment)
 can each have more than one person — there's a **"+ Add Another
 Seller/Assignee"** button under those fields for deals with more than one.
