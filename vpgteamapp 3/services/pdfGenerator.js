@@ -10,12 +10,17 @@ const { formatPropertyAddress } = require("./addressUtils");
  * VPG's real documents.
  *
  * Signature/date lines are marked with HelloSign "text tags"
- * (e.g. [sig|req|signer1]) so HelloSign auto-places signature and date
- * fields for the right signer when the PDF is sent with use_text_tags
- * enabled (see services/hellosign.js). Signer numbers are 1-indexed, in the
- * order produced by flattenSigners() (services/signerUtils.js) - which
- * walks each type's `signers` array in config/agreementTypes.js and expands
- * any "multiple" role (e.g. two Sellers) into one entry per person.
+ * (e.g. [sig|req|signer1], [date|req|signer1]) so HelloSign auto-places
+ * signature and date fields for the right signer when the PDF is sent with
+ * use_text_tags enabled (see services/hellosign.js). Signer numbers are
+ * 1-indexed, in the order produced by flattenSigners()
+ * (services/signerUtils.js) - which walks each type's `signers` array in
+ * config/agreementTypes.js and expands any "multiple" role (e.g. two
+ * Sellers) into one entry per person. Every tag is written via the
+ * tagLine() helper below, which renders the tag text in white so it's
+ * invisible once placed rather than leaving raw "[sig|req|signer1]"
+ * lettering next to (or behind) the real signature - see that function's
+ * comment for why.
  *
  * Returns a Promise<Buffer>.
  */
@@ -108,6 +113,25 @@ function locationLine(fields) {
  */
 function propertyAddressLine(fields) {
   return formatPropertyAddress(fields) || "____________________";
+}
+
+/**
+ * Writes `visibleText` in normal black ink, then appends a HelloSign text
+ * tag (e.g. "[sig|req|signer1]") in white so it's invisible on the page.
+ * Dropbox Sign's own documentation confirms text tags remain on the page as
+ * literal characters even after being converted into a real signature/date
+ * field ("by default the tags themselves will remain on the page") - so
+ * without this, the raw "[sig|req|signer1]" / "[date|req|signer1]" markup
+ * shows through next to (or behind) the actual signature, which is exactly
+ * the cluttered look this fixes. White-on-white is Dropbox Sign's own
+ * recommended way to hide tags: the tag still has to be real, visible-sized
+ * text in the PDF's content stream for their parser to find and place a
+ * field over it - only the ink color changes, not the size or position.
+ */
+function tagLine(doc, visibleText, tagText) {
+  doc.fillColor("black").text(visibleText, { continued: true });
+  doc.fillColor("white").text(tagText);
+  doc.fillColor("black");
 }
 
 function money(v) {
@@ -261,17 +285,19 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
     doc.moveDown(1.5);
     doc.font("Helvetica-Bold").fontSize(11).text(`Buyer: ${BUYER_ENTITY_NAME}`);
     doc.moveDown(0.6);
-    doc.font("Helvetica").fontSize(10.5).text(`By: ${buyerRepName}                              [sig|req|${buyerTag}]`);
+    doc.font("Helvetica").fontSize(10.5);
+    tagLine(doc, `By: ${buyerRepName}                              `, `[sig|req|${buyerTag}]`);
     doc.moveDown(0.3);
-    doc.text(`Date:                              [da|req|${buyerTag}]`);
+    tagLine(doc, `Date:                              `, `[date|req|${buyerTag}]`);
 
     doc.moveDown(1.2);
     doc.font("Helvetica-Bold").fontSize(11).text("Seller(s):");
     doc.moveDown(0.6);
     sellerEntries.forEach((entry) => {
-      doc.font("Helvetica").fontSize(10.5).text(`${entry.name}                              [sig|req|${entry.tag}]`);
+      doc.font("Helvetica").fontSize(10.5);
+      tagLine(doc, `${entry.name}                              `, `[sig|req|${entry.tag}]`);
       doc.moveDown(0.3);
-      doc.text(`Date:                              [da|req|${entry.tag}]`);
+      tagLine(doc, `Date:                              `, `[date|req|${entry.tag}]`);
       doc.moveDown(0.6);
     });
 
@@ -383,21 +409,22 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     doc.moveDown(1);
     doc.font("Helvetica-Bold").fontSize(11).text("By");
     doc.moveDown(0.4);
-    doc.font("Helvetica").fontSize(10.5).text(`Signor: ${BUYER_ENTITY_NAME}                    [sig|req|${assignorTag}]`);
+    doc.font("Helvetica").fontSize(10.5);
+    tagLine(doc, `Signor: ${BUYER_ENTITY_NAME}                    `, `[sig|req|${assignorTag}]`);
     doc.text(`By: ${assignorRepName}`);
     doc.text(`Title: ${ASSIGNOR_TITLE}`);
     doc.moveDown(0.3);
-    doc.text(`Date:                              [da|req|${assignorTag}]`);
+    tagLine(doc, `Date:                              `, `[date|req|${assignorTag}]`);
 
     doc.moveDown(1.2);
     doc.font("Helvetica-Bold").fontSize(11).text("ASSIGNEE:");
     doc.moveDown(0.4);
     doc.font("Helvetica").fontSize(10.5).text(`Entity: ${fields.assignee_entity_name || "____________________"}`);
     assigneeEntries.forEach((entry) => {
-      doc.text(`By: ${entry.name}                    [sig|req|${entry.tag}]`);
+      tagLine(doc, `By: ${entry.name}                    `, `[sig|req|${entry.tag}]`);
       doc.text(`Title: ${fields.assignee_title || "____________________"}`);
       doc.moveDown(0.3);
-      doc.text(`Date:                              [da|req|${entry.tag}]`);
+      tagLine(doc, `Date:                              `, `[date|req|${entry.tag}]`);
       doc.moveDown(0.6);
     });
 
@@ -446,10 +473,11 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
       doc.moveDown(0.8);
     };
     const signatureLine = (label, name, tag, extra) => {
-      doc.font("Helvetica").fontSize(10.5).text(`${label}: ${name}                    [sig|req|${tag}]`);
+      doc.font("Helvetica").fontSize(10.5);
+      tagLine(doc, `${label}: ${name}                    `, `[sig|req|${tag}]`);
       if (extra) doc.text(extra);
       doc.moveDown(0.3);
-      doc.text(`Date:                              [da|req|${tag}]`);
+      tagLine(doc, `Date:                              `, `[date|req|${tag}]`);
       doc.moveDown(0.8);
     };
     // Same as signatureLine, but for a role that can have multiple signers
@@ -826,9 +854,10 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
     sellerEntries.forEach((entry) => {
       doc.font("Helvetica-Bold").fontSize(10.5).text(entry.name);
       doc.moveDown(0.3);
-      doc.font("Helvetica").fontSize(10.5).text(`Signature: ________                    [sig|req|${entry.tag}]`);
+      doc.font("Helvetica").fontSize(10.5);
+      tagLine(doc, `Signature: ________                    `, `[sig|req|${entry.tag}]`);
       doc.moveDown(0.3);
-      doc.text(`Date: ____                              [da|req|${entry.tag}]`);
+      tagLine(doc, `Date: ____                              `, `[date|req|${entry.tag}]`);
       doc.moveDown(0.8);
     });
 
@@ -896,9 +925,10 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
     doc.moveDown(3);
 
     flat.forEach((entry) => {
-      doc.fontSize(11).fillColor("#000").text(`${entry.name} Signature:                              [sig|req|${entry.tag}]`);
+      doc.fontSize(11).fillColor("#000");
+      tagLine(doc, `${entry.name} Signature:                              `, `[sig|req|${entry.tag}]`);
       doc.moveDown(0.3);
-      doc.text(`Date:                              [da|req|${entry.tag}]`);
+      tagLine(doc, `Date:                              `, `[date|req|${entry.tag}]`);
       doc.moveDown(1);
     });
 
