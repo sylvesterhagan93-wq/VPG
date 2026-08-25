@@ -107,6 +107,14 @@ to deal — company name (required), contact person, phone, email, and
 address. Fill in whatever you have; anything left blank just prints as a
 blank line in the PDF.
 
+Seller (on Purchase and Novation) and Assignee (on Assignment) can each have
+more than one person — there's a **"+ Add Another Seller/Assignee"** button
+under those fields for deals with more than one. Everyone added gets their
+own line in the generated contract and their own individual HelloSign
+signature request - nobody's forced to share a signature line. The "signs on
+behalf of VPG" signer (Buyer Rep / Assignor Rep) stays locked to Sylvester
+either way - see "Managing your team" above.
+
 - **Purchase Agreement** (matches your real template) — Seller(s); a Buyer
   Representative who signs on behalf of Venture Property Group, LLC
   (always the fixed Buyer entity); agreement date; property address;

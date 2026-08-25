@@ -2,6 +2,7 @@ const axios = require("axios");
 const FormData = require("form-data");
 const { getType } = require("../config/agreementTypes");
 const { generateAgreementPdf } = require("./pdfGenerator");
+const { flattenSigners } = require("./signerUtils");
 
 const HELLOSIGN_API_BASE = "https://api.hellosign.com/v3";
 
@@ -50,9 +51,15 @@ async function sendAgreementForSignature({ type, fields, signers, sentByName }) 
     `Please review and sign this agreement for ${fields.property_address || "the property"}. Sent via VPGteamapp by ${sentByName || "the VPG team"}.`
   );
 
-  typeDef.signers.forEach((s, i) => {
-    form.append(`signers[${i}][email_address]`, signers[s.key]?.email || "");
-    form.append(`signers[${i}][name]`, signers[s.key]?.name || "");
+  // Built from the same flattened, ordered list of signers used to write the
+  // PDF's [sig|req|signerN] text tags (services/pdfGenerator.js /
+  // services/signerUtils.js), so a role with multiple people on it (e.g. two
+  // Sellers) always lines up 1:1 with the text tag in the document: tag
+  // signerN corresponds to signers[N-1] here.
+  const flat = flattenSigners(typeDef, signers);
+  flat.forEach((entry, i) => {
+    form.append(`signers[${i}][email_address]`, entry.email || "");
+    form.append(`signers[${i}][name]`, entry.name || "");
   });
 
   if (process.env.HELLOSIGN_TEST_MODE === "true") {

@@ -1,5 +1,6 @@
 const PDFDocument = require("pdfkit");
 const { getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE } = require("../config/agreementTypes");
+const { flattenSigners, entriesForRole, namesForRole, joinNames } = require("./signerUtils");
 
 /**
  * Builds the PDF for the given agreement so it can be sent to HelloSign for
@@ -33,11 +34,6 @@ function generateAgreementPdf({ type, fields, signers }) {
   }
 
   return generateGenericAgreementPdf({ typeDef, fields, signers });
-}
-
-function signerTag(typeDef, key) {
-  const idx = typeDef.signers.findIndex((s) => s.key === key);
-  return `signer${idx + 1}`;
 }
 
 function ordinalDay(d) {
@@ -92,10 +88,14 @@ function money(v) {
  * below come from the form.
  */
 function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
-  const sellerName = signers.seller?.name || "____________________";
-  const buyerRepName = signers.buyer_rep?.name || "____________________";
-  const sellerTag = signerTag(typeDef, "seller");
-  const buyerTag = signerTag(typeDef, "buyer_rep");
+  const flat = flattenSigners(typeDef, signers);
+  const sellerEntries = entriesForRole(flat, "seller");
+  const sellerNamesJoined = joinNames(namesForRole(flat, "seller"));
+  const sellerDefinedTerm =
+    sellerEntries.length > 1 ? `${sellerNamesJoined} (collectively, "Seller")` : `${sellerNamesJoined} ("Seller")`;
+  const buyerRepEntry = entriesForRole(flat, "buyer_rep")[0];
+  const buyerRepName = buyerRepEntry?.name || "____________________";
+  const buyerTag = buyerRepEntry?.tag;
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 54, size: "LETTER" });
@@ -113,7 +113,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
 
     doc.font("Helvetica-Bold").fontSize(13).text(
       `THIS AGREEMENT is made this ${formatLongDate(fields.agreement_date)} by and between ` +
-      `${sellerName} ("Seller") and ${BUYER_ENTITY_NAME} ("Buyer"). `,
+      `${sellerDefinedTerm} and ${BUYER_ENTITY_NAME} ("Buyer"). `,
       { continued: false }
     );
     doc.font("Helvetica").fontSize(10.5).text(
@@ -229,9 +229,12 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
     doc.moveDown(1.2);
     doc.font("Helvetica-Bold").fontSize(11).text("Seller(s):");
     doc.moveDown(0.6);
-    doc.font("Helvetica").fontSize(10.5).text(`${sellerName}                              [sig|req|${sellerTag}]`);
-    doc.moveDown(0.3);
-    doc.text(`Date:                              [da|req|${sellerTag}]`);
+    sellerEntries.forEach((entry) => {
+      doc.font("Helvetica").fontSize(10.5).text(`${entry.name}                              [sig|req|${entry.tag}]`);
+      doc.moveDown(0.3);
+      doc.text(`Date:                              [da|req|${entry.tag}]`);
+      doc.moveDown(0.6);
+    });
 
     doc.end();
   });
@@ -244,10 +247,11 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
  * Assignee is the end buyer taking over the contract.
  */
 function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
-  const assignorRepName = signers.assignor_rep?.name || "____________________";
-  const assigneeName = signers.assignee?.name || "____________________";
-  const assignorTag = signerTag(typeDef, "assignor_rep");
-  const assigneeTag = signerTag(typeDef, "assignee");
+  const flat = flattenSigners(typeDef, signers);
+  const assignorRepEntry = entriesForRole(flat, "assignor_rep")[0];
+  const assignorRepName = assignorRepEntry?.name || "____________________";
+  const assignorTag = assignorRepEntry?.tag;
+  const assigneeEntries = entriesForRole(flat, "assignee");
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 54, size: "LETTER" });
@@ -349,10 +353,13 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     doc.font("Helvetica-Bold").fontSize(11).text("ASSIGNEE:");
     doc.moveDown(0.4);
     doc.font("Helvetica").fontSize(10.5).text(`Entity: ${fields.assignee_entity_name || "____________________"}`);
-    doc.text(`By: ${assigneeName}                    [sig|req|${assigneeTag}]`);
-    doc.text(`Title: ${fields.assignee_title || "____________________"}`);
-    doc.moveDown(0.3);
-    doc.text(`Date:                              [da|req|${assigneeTag}]`);
+    assigneeEntries.forEach((entry) => {
+      doc.text(`By: ${entry.name}                    [sig|req|${entry.tag}]`);
+      doc.text(`Title: ${fields.assignee_title || "____________________"}`);
+      doc.moveDown(0.3);
+      doc.text(`Date:                              [da|req|${entry.tag}]`);
+      doc.moveDown(0.6);
+    });
 
     doc.end();
   });
@@ -371,10 +378,14 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
  * throughout - the same two HelloSign signers apply to all three sections.
  */
 function generateNovationAgreementPdf({ typeDef, fields, signers }) {
-  const sellerName = signers.seller?.name || "____________________";
-  const buyerRepName = signers.buyer_rep?.name || "____________________";
-  const sellerTag = signerTag(typeDef, "seller");
-  const buyerTag = signerTag(typeDef, "buyer_rep");
+  const flat = flattenSigners(typeDef, signers);
+  const sellerEntries = entriesForRole(flat, "seller");
+  const sellerNamesJoined = joinNames(namesForRole(flat, "seller"));
+  const sellerDefinedTerm =
+    sellerEntries.length > 1 ? `${sellerNamesJoined} (collectively, "Seller")` : `${sellerNamesJoined} ("Seller")`;
+  const buyerRepEntry = entriesForRole(flat, "buyer_rep")[0];
+  const buyerRepName = buyerRepEntry?.name || "____________________";
+  const buyerTag = buyerRepEntry?.tag;
   const buyerEntityFull = `${BUYER_ENTITY_NAME}, a New Mexico Limited Liability Company`;
 
   return new Promise((resolve, reject) => {
@@ -401,13 +412,18 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
       doc.text(`Date:                              [da|req|${tag}]`);
       doc.moveDown(0.8);
     };
+    // Same as signatureLine, but for a role that can have multiple signers
+    // (e.g. two Sellers) - renders one signature+date line per person.
+    const signatureLines = (label, entries) => {
+      entries.forEach((entry) => signatureLine(label, entry.name, entry.tag));
+    };
 
     // ---------- SECTION 1: PURCHASE AGREEMENT ----------
     docTitle("PURCHASE AGREEMENT");
 
     doc.font("Helvetica-Bold").fontSize(13).text(
       `THIS AGREEMENT is made this ${formatLongDate(fields.agreement_date)}, by and between ` +
-      `${sellerName} ("Seller") and ${BUYER_ENTITY_NAME} ("Buyer"), or assigns. `
+      `${sellerDefinedTerm} and ${BUYER_ENTITY_NAME} ("Buyer"), or assigns. `
     );
     doc.font("Helvetica").fontSize(10.5).text(
       'The parties agree that Seller shall sell and Buyer shall buy the following described Real ' +
@@ -528,7 +544,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     signatureLine("By", buyerRepName, buyerTag);
     doc.font("Helvetica-Bold").fontSize(11).text("SELLER:");
     doc.moveDown(0.4);
-    signatureLine("Signature", sellerName, sellerTag);
+    signatureLines("Signature", sellerEntries);
 
     // ---------- SECTION 2: NOVATION AND INDEMNIFICATION AGREEMENT ----------
     doc.addPage();
@@ -536,7 +552,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     body(
       `THIS NOVATION AND INDEMNIFICATION AGREEMENT is dated this ${formatLongDate(fields.agreement_date)}, by ` +
-      `and between ${sellerName} (hereinafter referred to as "Seller"), and ${BUYER_ENTITY_NAME} (hereinafter ` +
+      `and between ${sellerNamesJoined} (hereinafter referred to as "Seller"), and ${BUYER_ENTITY_NAME} (hereinafter ` +
       'referred to as "Buyer").'
     );
 
@@ -654,14 +670,14 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     signatureLine("Managing Member Signature", buyerRepName, buyerTag);
     doc.font("Helvetica-Bold").fontSize(11).text("Seller:");
     doc.moveDown(0.4);
-    signatureLine("Signature", sellerName, sellerTag);
+    signatureLines("Signature", sellerEntries);
 
     // ---------- SECTION 3: AUTHORIZATION TO SIGN LISTING DOCS AND OFFERS ----------
     doc.addPage();
     docTitle("AUTHORIZATION TO SIGN LISTING DOCS AND OFFERS");
 
     body(
-      `BE IT ACKNOWLEDGED that I/we, ${sellerName}, the "Sellers", do hereby grant a limited and specific ` +
+      `BE IT ACKNOWLEDGED that I/we, ${sellerNamesJoined}, the "Sellers", do hereby grant a limited and specific ` +
       `authorization to sign ${BUYER_ENTITY_NAME}, as my "Attorney-in-Fact".`
     );
 
@@ -707,7 +723,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     signatureLine("Managing Member Signature", buyerRepName, buyerTag);
     doc.font("Helvetica-Bold").fontSize(11).text("Seller:");
     doc.moveDown(0.4);
-    signatureLine("Signature", sellerName, sellerTag);
+    signatureLines("Signature", sellerEntries);
 
     doc.end();
   });
@@ -718,6 +734,8 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
  * provided.
  */
 function generateGenericAgreementPdf({ typeDef, fields, signers }) {
+  const flat = flattenSigners(typeDef, signers);
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 54 });
     const chunks = [];
@@ -741,9 +759,12 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
     doc.moveDown(0.3);
     doc.fontSize(11).font("Helvetica");
     typeDef.signers.forEach((s) => {
-      const name = signers[s.key]?.name || "(not provided)";
-      const email = signers[s.key]?.email || "(not provided)";
-      doc.text(`${s.label}: ${name}  <${email}>`);
+      const entries = entriesForRole(flat, s.key);
+      if (entries.length === 0) {
+        doc.text(`${s.label}: (not provided)`);
+      } else {
+        entries.forEach((entry) => doc.text(`${s.label}: ${entry.name}  <${entry.email}>`));
+      }
     });
 
     doc.moveDown(1);
@@ -766,11 +787,10 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
 
     doc.moveDown(3);
 
-    typeDef.signers.forEach((s, i) => {
-      const tag = `signer${i + 1}`;
-      doc.fontSize(11).fillColor("#000").text(`${s.label} Signature:                              [sig|req|${tag}]`);
+    flat.forEach((entry) => {
+      doc.fontSize(11).fillColor("#000").text(`${entry.name} Signature:                              [sig|req|${entry.tag}]`);
       doc.moveDown(0.3);
-      doc.text(`Date:                              [da|req|${tag}]`);
+      doc.text(`Date:                              [da|req|${entry.tag}]`);
       doc.moveDown(1);
     });
 

@@ -38,6 +38,27 @@
                 <label>Email</label>
                 <input type="email" value="<%= vpgPrincipal.email %>" disabled />
               </div>
+            <% } else if (s.multiple) { %>
+              <div class="multi-signer-group" data-role="<%= s.key %>">
+                <% (multiSignerEntries[s.key] || [{ name: '', email: '' }]).forEach(function(entry, idx) { %>
+                  <div class="multi-signer-entry">
+                    <div class="field" style="margin-bottom:0;">
+                      <label>Name</label>
+                      <input type="text" name="signer_<%= s.key %>_name[]" value="<%= entry.name || '' %>" <%= idx === 0 ? 'required' : '' %> />
+                    </div>
+                    <div class="field" style="margin-bottom:0;">
+                      <label>Email</label>
+                      <input type="email" name="signer_<%= s.key %>_email[]" value="<%= entry.email || '' %>" <%= idx === 0 ? 'required' : '' %> />
+                    </div>
+                    <button type="button" class="btn-tiny remove-signer-row"
+                            onclick="removeSignerRow(this)"
+                            <%= (multiSignerEntries[s.key] || []).length <= 1 ? 'style="visibility:hidden;"' : '' %>>Remove</button>
+                  </div>
+                <% }) %>
+                <button type="button" class="btn-secondary btn-add-signer" onclick="addSignerRow(this, '<%= s.key %>')">
+                  + Add Another <%= s.addButtonLabel || s.label %>
+                </button>
+              </div>
             <% } else { %>
               <div class="field" style="margin-bottom:0;">
                 <label for="signer_<%= s.key %>_name">Name</label>
@@ -89,5 +110,45 @@
       </form>
     </div>
   </div>
+
+  <script>
+    function addSignerRow(btn, roleKey) {
+      const group = btn.closest('.multi-signer-group');
+      const entry = document.createElement('div');
+      entry.className = 'multi-signer-entry';
+      entry.innerHTML =
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Name</label>' +
+          '<input type="text" name="signer_' + roleKey + '_name[]" />' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:0;">' +
+          '<label>Email</label>' +
+          '<input type="email" name="signer_' + roleKey + '_email[]" />' +
+        '</div>' +
+        '<button type="button" class="btn-tiny remove-signer-row" onclick="removeSignerRow(this)">Remove</button>';
+      group.insertBefore(entry, btn);
+      updateRemoveVisibility(group);
+    }
+
+    function removeSignerRow(btn) {
+      const entry = btn.closest('.multi-signer-entry');
+      const group = entry.closest('.multi-signer-group');
+      if (group.querySelectorAll('.multi-signer-entry').length > 1) {
+        entry.remove();
+        updateRemoveVisibility(group);
+      } else {
+        // Never remove the last row - just clear it.
+        entry.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      }
+    }
+
+    function updateRemoveVisibility(group) {
+      const rows = group.querySelectorAll('.multi-signer-entry');
+      rows.forEach(function (row) {
+        const removeBtn = row.querySelector('.remove-signer-row');
+        removeBtn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+      });
+    }
+  </script>
 </body>
 </html>

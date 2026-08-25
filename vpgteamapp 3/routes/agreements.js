@@ -2,8 +2,26 @@ const express = require("express");
 const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
 const { sendAgreementForSignature } = require("../services/hellosign");
+const { normalizeMultiEntries } = require("../services/signerUtils");
 
 const router = express.Router();
+
+// For every "multiple" signer role (e.g. Seller, Assignee), builds the list
+// of { name, email } rows the form should render - either what was already
+// typed in (on a failed submit, so nothing is lost) or a single blank
+// starter row (on a fresh form). Always at least one row so there's always
+// something to fill in.
+function buildMultiSignerEntries(typeDef, body) {
+  const map = {};
+  typeDef.signers.forEach((s) => {
+    if (!s.multiple) return;
+    const entries = body
+      ? normalizeMultiEntries(body[`signer_${s.key}_name`], body[`signer_${s.key}_email`])
+      : [];
+    map[s.key] = entries.length > 0 ? entries : [{ name: "", email: "" }];
+  });
+  return map;
+}
 
 router.get("/dashboard", async (req, res, next) => {
   try {
@@ -51,6 +69,7 @@ router.get("/agreements/new/:type", (req, res) => {
     typeDef,
     error: null,
     formValues,
+    multiSignerEntries: buildMultiSignerEntries(typeDef),
     userName: req.session.userName,
     vpgPrincipal: VPG_PRINCIPAL,
   });
@@ -66,11 +85,14 @@ router.post("/agreements/new/:type", async (req, res) => {
   // always forced to Sylvester here, regardless of what was submitted -
   // this is what actually enforces the lock (the form doesn't even render
   // editable inputs for it, but this is what stops someone from bypassing
-  // that by posting to this route directly).
+  // that by posting to this route directly). "Multiple" roles (Seller,
+  // Assignee) come back as an array of { name, email } - one per person.
   const signers = {};
   for (const s of typeDef.signers) {
     if (s.internal) {
       signers[s.key] = { name: VPG_PRINCIPAL.name, email: VPG_PRINCIPAL.email };
+    } else if (s.multiple) {
+      signers[s.key] = normalizeMultiEntries(body[`signer_${s.key}_name`], body[`signer_${s.key}_email`]);
     } else {
       signers[s.key] = {
         name: (body[`signer_${s.key}_name`] || "").trim(),
@@ -88,8 +110,19 @@ router.post("/agreements/new/:type", async (req, res) => {
   // Basic required-field validation
   const missing = [];
   typeDef.signers.forEach((s) => {
-    if (!signers[s.key].name) missing.push(`${s.label} name`);
-    if (!signers[s.key].email) missing.push(`${s.label} email`);
+    if (s.internal) return;
+    if (s.multiple) {
+      const entries = signers[s.key] || [];
+      const complete = entries.filter((e) => e.name && e.email);
+      if (complete.length === 0) {
+        missing.push(`${s.label} (at least one)`);
+      } else if (complete.length !== entries.length) {
+        missing.push(`${s.label} - each row needs both a name and an email`);
+      }
+    } else {
+      if (!signers[s.key].name) missing.push(`${s.label} name`);
+      if (!signers[s.key].email) missing.push(`${s.label} email`);
+    }
   });
   typeDef.fields.forEach((f) => {
     if (f.required && !fields[f.key]) missing.push(f.label);
@@ -100,12 +133,21 @@ router.post("/agreements/new/:type", async (req, res) => {
       typeDef,
       error: `Please fill in: ${missing.join(", ")}`,
       formValues: body,
+      multiSignerEntries: buildMultiSignerEntries(typeDef, body),
       userName: req.session.userName,
       vpgPrincipal: VPG_PRINCIPAL,
     });
   }
 
-  const partySummary = typeDef.signers.map((s) => signers[s.key].name).join(" & ");
+  const partySummary = typeDef.signers
+    .map((s) => {
+      if (s.multiple) {
+        return (signers[s.key] || []).filter((e) => e.name).map((e) => e.name).join(", ");
+      }
+      return signers[s.key].name;
+    })
+    .filter(Boolean)
+    .join(" & ");
 
   try {
     const result = await sendAgreementForSignature({
@@ -150,6 +192,7 @@ router.post("/agreements/new/:type", async (req, res) => {
       typeDef,
       error: `Could not send: ${err.message}`,
       formValues: body,
+      multiSignerEntries: buildMultiSignerEntries(typeDef, body),
       userName: req.session.userName,
       vpgPrincipal: VPG_PRINCIPAL,
     });

@@ -38,7 +38,7 @@ const AGREEMENT_TYPES = {
     label: "Purchase Agreement",
     description: "Wholesale purchase agreement between a Seller and Venture Property Group, LLC.",
     signers: [
-      { key: "seller", label: "Seller(s)" },
+      { key: "seller", label: "Seller(s)", multiple: true, addButtonLabel: "Seller" },
       { key: "buyer_rep", label: `Buyer Representative (signs on behalf of ${BUYER_ENTITY_NAME})`, internal: true },
     ],
     fields: [
@@ -61,7 +61,7 @@ const AGREEMENT_TYPES = {
       "Ohio wholesale purchase agreement bundled with the Novation & Indemnification Agreement and " +
       "Authorization to Sign (power of attorney), so Venture Property Group can novate the deal to a third-party purchaser.",
     signers: [
-      { key: "seller", label: "Seller(s)" },
+      { key: "seller", label: "Seller(s)", multiple: true, addButtonLabel: "Seller" },
       { key: "buyer_rep", label: `Buyer Representative / Managing Member (signs on behalf of ${BUYER_ENTITY_NAME})`, internal: true },
     ],
     fields: [
@@ -91,7 +91,7 @@ const AGREEMENT_TYPES = {
     description: `Assigns ${BUYER_ENTITY_NAME}'s rights under a Purchase Agreement to an end buyer (Assignee).`,
     signers: [
       { key: "assignor_rep", label: `Assignor Representative (signs on behalf of ${BUYER_ENTITY_NAME})`, internal: true },
-      { key: "assignee", label: "Assignee" },
+      { key: "assignee", label: "Assignee", multiple: true, addButtonLabel: "Assignee" },
     ],
     fields: [
       { key: "agreement_date", label: "Agreement Date (signed and delivered as of)", type: "date", required: true },
