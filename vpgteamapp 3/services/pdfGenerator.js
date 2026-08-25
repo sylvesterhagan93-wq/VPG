@@ -4,16 +4,16 @@ const { flattenSigners, entriesForRole, namesForRole, joinNames } = require("./s
 
 /**
  * Builds the PDF for the given agreement so it can be sent to HelloSign for
- * signature. Purchase, Assignment, and Novation agreements use dedicated
- * layouts that mirror VPG's real documents. Addendum still uses a plain
- * generic layout until its real template is provided - build that one the
- * same way once you upload it.
+ * signature. All four document types use dedicated layouts that mirror
+ * VPG's real documents.
  *
  * Signature/date lines are marked with HelloSign "text tags"
  * (e.g. [sig|req|signer1]) so HelloSign auto-places signature and date
  * fields for the right signer when the PDF is sent with use_text_tags
- * enabled (see services/hellosign.js). Signer numbers are 1-indexed in the
- * order each type's `signers` array is defined in config/agreementTypes.js.
+ * enabled (see services/hellosign.js). Signer numbers are 1-indexed, in the
+ * order produced by flattenSigners() (services/signerUtils.js) - which
+ * walks each type's `signers` array in config/agreementTypes.js and expands
+ * any "multiple" role (e.g. two Sellers) into one entry per person.
  *
  * Returns a Promise<Buffer>.
  */
@@ -33,6 +33,11 @@ function generateAgreementPdf({ type, fields, signers }) {
     return generateNovationAgreementPdf({ typeDef, fields, signers });
   }
 
+  if (type === "addendum") {
+    return generateAddendumPdf({ typeDef, fields, signers });
+  }
+
+  // Safety net for any future type added without its own dedicated layout.
   return generateGenericAgreementPdf({ typeDef, fields, signers });
 }
 
@@ -730,8 +735,75 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 }
 
 /**
- * Generic fallback layout used for Addendum until its real template is
- * provided.
+ * Addendum - mirrors VPG's real "Addendum to Purchase Agreement" template.
+ * Amends the Purchase Price and/or Closing terms of an existing Purchase
+ * Agreement. Only the Seller(s) sign - there's no Buyer/VPG signature line
+ * on this one, matching the real template.
+ */
+function generateAddendumPdf({ typeDef, fields, signers }) {
+  const flat = flattenSigners(typeDef, signers);
+  const sellerEntries = entriesForRole(flat, "seller");
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 54, size: "LETTER" });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const body = (text) => doc.font("Helvetica").fontSize(10.5).text(text).moveDown(0.6);
+    const heading = (text) => {
+      doc.font("Helvetica-Bold").fontSize(11).text(text);
+    };
+
+    doc.font("Helvetica-Bold").fontSize(18).text("ADDENDUM TO PURCHASE AGREEMENT");
+    doc.moveDown(0.8);
+
+    doc.font("Helvetica-Bold").fontSize(10.5).text("Property Address:");
+    doc.font("Helvetica").fontSize(10.5).text(fields.property_address || "____________________");
+    doc.moveDown(0.8);
+
+    body("This Addendum modifies the existing Purchase Agreement for the property referenced above.");
+    body("The parties agree to the following amendments:");
+
+    heading("1. Purchase Price");
+    body(
+      `The purchase price shall be amended to ${money(fields.amended_price)} ${fields.payment_terms || "CASH"} ` +
+      `payable by ${BUYER_ENTITY_NAME} as Buyer.`
+    );
+
+    heading("2. Closing Date");
+    body(`${BUYER_ENTITY_NAME} shall close ${fields.closing_terms || "____________________"}.`);
+
+    heading("3. Remaining Terms");
+    body(
+      "All other terms, conditions, and provisions of the original Purchase Agreement shall remain unchanged " +
+      "and in full force and effect."
+    );
+
+    body("By signing below, the Sellers acknowledge and agree to the amendments stated above.");
+
+    doc.moveDown(0.4);
+    doc.font("Helvetica-Bold").fontSize(11).text("SELLERS");
+    doc.moveDown(0.6);
+
+    sellerEntries.forEach((entry) => {
+      doc.font("Helvetica-Bold").fontSize(10.5).text(entry.name);
+      doc.moveDown(0.3);
+      doc.font("Helvetica").fontSize(10.5).text(`Signature: ________                    [sig|req|${entry.tag}]`);
+      doc.moveDown(0.3);
+      doc.text(`Date: ____                              [da|req|${entry.tag}]`);
+      doc.moveDown(0.8);
+    });
+
+    doc.end();
+  });
+}
+
+/**
+ * Generic fallback layout - currently unused, since all four document
+ * types now have dedicated layouts above. Kept as a safety net in case a
+ * new type is ever added without one.
  */
 function generateGenericAgreementPdf({ typeDef, fields, signers }) {
   const flat = flattenSigners(typeDef, signers);

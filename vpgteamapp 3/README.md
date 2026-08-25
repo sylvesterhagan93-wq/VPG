@@ -29,11 +29,10 @@ the actual HelloSign send:
   tested against a real HelloSign account yet since I don't have your API
   key — the first real send is worth double-checking that the fields land
   where expected.
-- **Purchase Agreement**, **Assignment Agreement**, and **Novation
-  Agreement** are built from the actual documents you use today
-  (word-for-word contract language, with your form answers dropped into
-  the blanks). **Addendum** is still a generic placeholder layout — send
-  me that real document the same way and I'll match it too.
+- All four document types — **Purchase Agreement**, **Assignment
+  Agreement**, **Novation Agreement**, and **Addendum** — are now built
+  from the actual documents you use today (word-for-word contract
+  language, with your form answers dropped into the blanks).
 
 ## Running it locally
 
@@ -107,13 +106,15 @@ to deal — company name (required), contact person, phone, email, and
 address. Fill in whatever you have; anything left blank just prints as a
 blank line in the PDF.
 
-Seller (on Purchase and Novation) and Assignee (on Assignment) can each have
-more than one person — there's a **"+ Add Another Seller/Assignee"** button
-under those fields for deals with more than one. Everyone added gets their
-own line in the generated contract and their own individual HelloSign
-signature request - nobody's forced to share a signature line. The "signs on
-behalf of VPG" signer (Buyer Rep / Assignor Rep) stays locked to Sylvester
-either way - see "Managing your team" above.
+Seller (on Purchase, Novation, and Addendum) and Assignee (on Assignment)
+can each have more than one person — there's a **"+ Add Another
+Seller/Assignee"** button under those fields for deals with more than one.
+Everyone added gets their own line in the generated contract and their own
+individual HelloSign signature request - nobody's forced to share a
+signature line. The "signs on behalf of VPG" signer (Buyer Rep / Assignor
+Rep) stays locked to Sylvester either way - see "Managing your team" above.
+(Addendum has no VPG-side signer at all, matching the real template - only
+the Seller(s) sign it.)
 
 - **Purchase Agreement** (matches your real template) — Seller(s); a Buyer
   Representative who signs on behalf of Venture Property Group, LLC
@@ -138,13 +139,13 @@ either way - see "Managing your team" above.
   section (pre-filled with American Title Solutions' info since that's
   who you've used before, but fully editable per deal); closing/inspection
   timelines; governing law state; seller net proceeds; additional terms.
-- **Addendum** (placeholder, not yet matched to a real document) — Party
-  1, Party 2, related agreement reference, property address, effective
-  date, details of changes.
-
-Send over your real Addendum document and I'll rebuild that one the same
-way Purchase, Assignment, and Novation were built — matching the actual
-contract language, not just a generic field summary.
+- **Addendum** (matches your real template) — amends the Purchase Price
+  and/or Closing terms of an existing Purchase Agreement. Only the
+  Seller(s) sign this one — there's no Buyer/VPG signature line, matching
+  the real document. Fields: property address; amended purchase price;
+  payment terms (defaults to "CASH"); closing terms (defaults to "as soon
+  as title clears and the property is clear and ready to close", editable
+  per deal).
 
 ## Project structure
 

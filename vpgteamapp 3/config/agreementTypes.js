@@ -110,16 +110,21 @@ const AGREEMENT_TYPES = {
   addendum: {
     key: "addendum",
     label: "Addendum",
-    description: "Amends or adds terms to an existing, previously signed agreement.",
-    signers: [
-      { key: "party_one", label: "Party 1" },
-      { key: "party_two", label: "Party 2" },
-    ],
+    description: `Amends the Purchase Price and/or Closing Date terms of an existing Purchase Agreement with ${BUYER_ENTITY_NAME}.`,
+    // Matches your real template: only the Seller(s) sign an Addendum -
+    // there's no Buyer/VPG signature line on it.
+    signers: [{ key: "seller", label: "Seller(s)", multiple: true, addButtonLabel: "Seller" }],
     fields: [
-      { key: "related_agreement", label: "Related Agreement / Contract Reference", type: "text", required: true },
-      { key: "property_address", label: "Property Address", type: "text" },
-      { key: "effective_date", label: "Effective Date", type: "date" },
-      { key: "changes", label: "Details of Addendum / Changes", type: "textarea", required: true },
+      { key: "property_address", label: "Property Address (street, city, state, ZIP)", type: "text", required: true },
+      { key: "amended_price", label: "Amended Purchase Price ($)", type: "text", required: true },
+      { key: "payment_terms", label: "Payment Terms (e.g., CASH)", type: "text", default: "CASH" },
+      {
+        key: "closing_terms",
+        label: "Closing Terms",
+        type: "text",
+        required: true,
+        default: "as soon as title clears and the property is clear and ready to close",
+      },
     ],
   },
 };
