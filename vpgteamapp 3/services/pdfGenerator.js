@@ -1,8 +1,17 @@
 const PDFDocument = require("pdfkit");
+const path = require("path");
 const { getType, BUYER_ENTITY_NAME, ASSIGNOR_TITLE } = require("../config/agreementTypes");
 const { flattenSigners, entriesForRole, namesForRole, joinNames } = require("./signerUtils");
 const { STATE_NAMES } = require("../config/usLocations");
 const { formatPropertyAddress } = require("./addressUtils");
+
+// Brand palette sampled directly from public/images/logo.png, so the PDF
+// letterhead/headings match VPG's actual logo colors rather than a guess.
+const BRAND_NAVY = "#00007A";
+const BRAND_GREEN = "#5F8F46";
+const MUTED_GRAY = "#6b7280";
+const RULE_GRAY = "#d9dde6";
+const LOGO_PATH = path.join(__dirname, "..", "public", "images", "logo.png");
 
 /**
  * Builds the PDF for the given agreement so it can be sent to HelloSign for
@@ -134,6 +143,110 @@ function tagLine(doc, visibleText, tagText) {
   doc.fillColor("black");
 }
 
+/**
+ * Draws the VPG letterhead - logo, company name, and a colored rule - at
+ * the top of the current page. Called once, at the very start of every
+ * generated agreement (page 1 only). Purely visual polish - no contract
+ * wording lives here, and a missing/unreadable logo file never breaks PDF
+ * generation, it just falls back to a text-only header.
+ */
+function drawLetterhead(doc) {
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+  const top = doc.page.margins.top;
+  const logoSize = 42;
+
+  try {
+    doc.image(LOGO_PATH, left, top - 4, { width: logoSize });
+  } catch (err) {
+    // Missing/unreadable logo file - fall back to text-only, silently.
+  }
+
+  doc.font("Helvetica-Bold").fontSize(13).fillColor(BRAND_NAVY)
+    .text("VENTURE PROPERTY GROUP, LLC", left + logoSize + 12, top, { characterSpacing: 0.3 });
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED_GRAY)
+    .text("Real Estate Acquisitions", left + logoSize + 12, top + 16);
+
+  const ruleY = top + logoSize + 6;
+  doc.moveTo(left, ruleY).lineTo(right, ruleY).lineWidth(1.75).strokeColor(BRAND_GREEN).stroke();
+
+  doc.fillColor("#000000").strokeColor("#000000").lineWidth(1);
+  doc.x = left;
+  doc.y = ruleY + 16;
+}
+
+/**
+ * Centered document title (e.g. "PURCHASE AGREEMENT") with a short navy/
+ * green rule beneath it. Used for the title of every document type, and
+ * for each of the three bundled documents in a Novation packet.
+ */
+function drawDocTitle(doc, text) {
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+
+  doc.font("Helvetica-Bold").fontSize(15).fillColor(BRAND_NAVY)
+    .text(text, { align: "center", characterSpacing: 0.5 });
+  doc.moveDown(0.3);
+
+  const midX = left + (right - left) / 2;
+  const ruleY = doc.y;
+  doc.moveTo(midX - 40, ruleY).lineTo(midX + 40, ruleY).lineWidth(1.25).strokeColor(BRAND_GREEN).stroke();
+  doc.strokeColor("#000000").lineWidth(1).fillColor("#000000");
+
+  doc.moveDown(0.8);
+}
+
+/**
+ * Bold, brand-navy section/party label (e.g. "Buyer:", "Seller(s):",
+ * "ASSIGNEE:") - a small step up from a plain bold-black label so the
+ * document's structural landmarks (headings, party labels) all read in the
+ * same accent color. Resets to black fill afterward so body text below is
+ * unaffected.
+ */
+function boldLabel(doc, text, size) {
+  doc.font("Helvetica-Bold").fontSize(size || 11).fillColor(BRAND_NAVY).text(text);
+  doc.fillColor("#000000");
+}
+
+/**
+ * Draws a footer (company name + "Page X of Y") on every buffered page of
+ * the document, called once right before doc.end(). Requires the
+ * PDFDocument to have been created with { bufferPages: true } so earlier
+ * pages can still be revisited via switchToPage().
+ */
+function drawFooter(doc) {
+  const range = doc.bufferedPageRange();
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    const footerY = doc.page.height - 36;
+
+    // The footer sits inside the page's bottom margin band, which PDFKit
+    // otherwise treats as "past the content area" - writing there would
+    // trigger its automatic page-break logic and add a blank extra page.
+    // Zero out the bottom margin just for this page while drawing the
+    // footer, then restore it.
+    const originalBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+
+    doc.moveTo(left, footerY - 10).lineTo(right, footerY - 10).lineWidth(0.5).strokeColor(RULE_GRAY).stroke();
+    doc.strokeColor("#000000").lineWidth(1);
+
+    doc.font("Helvetica").fontSize(8).fillColor(MUTED_GRAY)
+      .text("Venture Property Group, LLC", left, footerY, { lineBreak: false });
+    doc.text(`Page ${i - range.start + 1} of ${range.count}`, left, footerY, {
+      width: right - left,
+      align: "right",
+      lineBreak: false,
+    });
+    doc.fillColor("#000000");
+
+    doc.page.margins.bottom = originalBottomMargin;
+  }
+}
+
 function money(v) {
   if (!v) return "____________";
   let trimmed = String(v).trim();
@@ -161,16 +274,19 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
   const buyerTag = buyerRepEntry?.tag;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 54, size: "LETTER" });
+    const doc = new PDFDocument({ margin: 54, size: "LETTER", bufferPages: true });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    drawLetterhead(doc);
+    drawDocTitle(doc, "PURCHASE AGREEMENT");
+
     const body = (text, opts) => doc.font("Helvetica").fontSize(10.5).text(text, opts);
     const heading = (text) => {
       doc.moveDown(0.8);
-      doc.font("Helvetica-Bold").fontSize(11).text(text);
+      boldLabel(doc, text);
       doc.moveDown(0.2);
     };
 
@@ -283,7 +399,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
     );
 
     doc.moveDown(1.5);
-    doc.font("Helvetica-Bold").fontSize(11).text(`Buyer: ${BUYER_ENTITY_NAME}`);
+    boldLabel(doc, `Buyer: ${BUYER_ENTITY_NAME}`);
     doc.moveDown(0.6);
     doc.font("Helvetica").fontSize(10.5);
     tagLine(doc, `By: ${buyerRepName}                              `, `[sig|req|${buyerTag}]`);
@@ -291,7 +407,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
     tagLine(doc, `Date:                              `, `[date|req|${buyerTag}]`);
 
     doc.moveDown(1.2);
-    doc.font("Helvetica-Bold").fontSize(11).text("Seller(s):");
+    boldLabel(doc, "Seller(s):");
     doc.moveDown(0.6);
     sellerEntries.forEach((entry) => {
       doc.font("Helvetica").fontSize(10.5);
@@ -301,6 +417,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
       doc.moveDown(0.6);
     });
 
+    drawFooter(doc);
     doc.end();
   });
 }
@@ -319,17 +436,20 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
   const assigneeEntries = entriesForRole(flat, "assignee");
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 54, size: "LETTER" });
+    const doc = new PDFDocument({ margin: 54, size: "LETTER", bufferPages: true });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    drawLetterhead(doc);
+
     const body = (text) => doc.font("Helvetica").fontSize(10.5).text(text).moveDown(0.6);
 
-    doc.font("Helvetica-Bold").fontSize(13).text("ASSIGNMENT OF SALES CONTRACT FOR REAL ESTATE", { align: "center" });
-    doc.fontSize(10.5).font("Helvetica").text(`Address: ${propertyAddressLine(fields)}`, { align: "center" });
+    drawDocTitle(doc, "ASSIGNMENT OF SALES CONTRACT FOR REAL ESTATE");
+    doc.fontSize(10.5).font("Helvetica").fillColor(MUTED_GRAY).text(`Address: ${propertyAddressLine(fields)}`, { align: "center" });
     doc.fontSize(10.5).font("Helvetica").text(`Located in ${locationLine(fields)}.`, { align: "center" });
+    doc.fillColor("#000000");
     doc.moveDown(1);
 
     body(
@@ -407,7 +527,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     body(`Escrow / Title Company: ${escrowLine(fields)}`);
 
     doc.moveDown(1);
-    doc.font("Helvetica-Bold").fontSize(11).text("By");
+    boldLabel(doc, "By");
     doc.moveDown(0.4);
     doc.font("Helvetica").fontSize(10.5);
     tagLine(doc, `Signor: ${BUYER_ENTITY_NAME}                    `, `[sig|req|${assignorTag}]`);
@@ -417,7 +537,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     tagLine(doc, `Date:                              `, `[date|req|${assignorTag}]`);
 
     doc.moveDown(1.2);
-    doc.font("Helvetica-Bold").fontSize(11).text("ASSIGNEE:");
+    boldLabel(doc, "ASSIGNEE:");
     doc.moveDown(0.4);
     doc.font("Helvetica").fontSize(10.5).text(`Entity: ${fields.assignee_entity_name || "____________________"}`);
     assigneeEntries.forEach((entry) => {
@@ -428,6 +548,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
       doc.moveDown(0.6);
     });
 
+    drawFooter(doc);
     doc.end();
   });
 }
@@ -456,22 +577,21 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
   const buyerEntityFull = `${BUYER_ENTITY_NAME}, a New Mexico Limited Liability Company`;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 54, size: "LETTER" });
+    const doc = new PDFDocument({ margin: 54, size: "LETTER", bufferPages: true });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    drawLetterhead(doc);
+
     const body = (text) => doc.font("Helvetica").fontSize(10.5).text(text).moveDown(0.6);
     const heading = (text) => {
       doc.moveDown(0.6);
-      doc.font("Helvetica-Bold").fontSize(11).text(text);
+      boldLabel(doc, text);
       doc.moveDown(0.2);
     };
-    const docTitle = (text) => {
-      doc.font("Helvetica-Bold").fontSize(13).text(text, { align: "center" });
-      doc.moveDown(0.8);
-    };
+    const docTitle = (text) => drawDocTitle(doc, text);
     const signatureLine = (label, name, tag, extra) => {
       doc.font("Helvetica").fontSize(10.5);
       tagLine(doc, `${label}: ${name}                    `, `[sig|req|${tag}]`);
@@ -607,10 +727,10 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     );
 
     doc.moveDown(0.8);
-    doc.font("Helvetica-Bold").fontSize(11).text(`BUYER: ${BUYER_ENTITY_NAME}`);
+    boldLabel(doc, `BUYER: ${BUYER_ENTITY_NAME}`);
     doc.moveDown(0.4);
     signatureLine("By", buyerRepName, buyerTag);
-    doc.font("Helvetica-Bold").fontSize(11).text("SELLER:");
+    boldLabel(doc, "SELLER:");
     doc.moveDown(0.4);
     signatureLines("Signature", sellerEntries);
 
@@ -733,10 +853,10 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     body("By signing below, you understand and agree to the terms and conditions of this Agreement.");
 
     doc.moveDown(0.4);
-    doc.font("Helvetica-Bold").fontSize(11).text(`Buyer(s): ${buyerEntityFull}`);
+    boldLabel(doc, `Buyer(s): ${buyerEntityFull}`);
     doc.moveDown(0.4);
     signatureLine("Managing Member Signature", buyerRepName, buyerTag);
-    doc.font("Helvetica-Bold").fontSize(11).text("Seller:");
+    boldLabel(doc, "Seller:");
     doc.moveDown(0.4);
     signatureLines("Signature", sellerEntries);
 
@@ -786,13 +906,14 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
     );
 
     doc.moveDown(0.4);
-    doc.font("Helvetica-Bold").fontSize(11).text(`Buyer: ${buyerEntityFull}`);
+    boldLabel(doc, `Buyer: ${buyerEntityFull}`);
     doc.moveDown(0.4);
     signatureLine("Managing Member Signature", buyerRepName, buyerTag);
-    doc.font("Helvetica-Bold").fontSize(11).text("Seller:");
+    boldLabel(doc, "Seller:");
     doc.moveDown(0.4);
     signatureLines("Signature", sellerEntries);
 
+    drawFooter(doc);
     doc.end();
   });
 }
@@ -808,21 +929,20 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
   const sellerEntries = entriesForRole(flat, "seller");
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 54, size: "LETTER" });
+    const doc = new PDFDocument({ margin: 54, size: "LETTER", bufferPages: true });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    drawLetterhead(doc);
+
     const body = (text) => doc.font("Helvetica").fontSize(10.5).text(text).moveDown(0.6);
-    const heading = (text) => {
-      doc.font("Helvetica-Bold").fontSize(11).text(text);
-    };
+    const heading = (text) => boldLabel(doc, text);
 
-    doc.font("Helvetica-Bold").fontSize(18).text("ADDENDUM TO PURCHASE AGREEMENT");
-    doc.moveDown(0.8);
+    drawDocTitle(doc, "ADDENDUM TO PURCHASE AGREEMENT");
 
-    doc.font("Helvetica-Bold").fontSize(10.5).text("Property Address:");
+    boldLabel(doc, "Property Address:", 10.5);
     doc.font("Helvetica").fontSize(10.5).text(propertyAddressLine(fields));
     doc.font("Helvetica").fontSize(10.5).text(`Located in ${locationLine(fields)}.`);
     doc.moveDown(0.8);
@@ -848,7 +968,7 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
     body("By signing below, the Sellers acknowledge and agree to the amendments stated above.");
 
     doc.moveDown(0.4);
-    doc.font("Helvetica-Bold").fontSize(11).text("SELLERS");
+    boldLabel(doc, "SELLERS");
     doc.moveDown(0.6);
 
     sellerEntries.forEach((entry) => {
@@ -861,6 +981,7 @@ function generateAddendumPdf({ typeDef, fields, signers }) {
       doc.moveDown(0.8);
     });
 
+    drawFooter(doc);
     doc.end();
   });
 }
@@ -874,25 +995,21 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
   const flat = flattenSigners(typeDef, signers);
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 54 });
+    const doc = new PDFDocument({ margin: 54, bufferPages: true });
     const chunks = [];
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    doc.fontSize(18).font("Helvetica-Bold").text("VPG", { align: "left" });
-    doc.moveDown(0.2);
-    doc.fontSize(16).text(typeDef.label, { align: "left" });
-    doc.moveDown(0.3);
-    doc.fontSize(10).font("Helvetica").fillColor("#555")
+    drawLetterhead(doc);
+    drawDocTitle(doc, typeDef.label.toUpperCase());
+
+    doc.fontSize(10).font("Helvetica").fillColor(MUTED_GRAY)
       .text(`Generated ${new Date().toLocaleString("en-US")}`, { align: "left" });
     doc.fillColor("#000");
     doc.moveDown(1);
 
-    doc.moveTo(doc.x, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).strokeColor("#ccc").stroke();
-    doc.moveDown(1);
-
-    doc.fontSize(12).font("Helvetica-Bold").text("Parties");
+    boldLabel(doc, "Parties", 12);
     doc.moveDown(0.3);
     doc.fontSize(11).font("Helvetica");
     typeDef.signers.forEach((s) => {
@@ -905,7 +1022,7 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
     });
 
     doc.moveDown(1);
-    doc.fontSize(12).font("Helvetica-Bold").text("Agreement Details");
+    boldLabel(doc, "Agreement Details", 12);
     doc.moveDown(0.3);
     doc.fontSize(11).font("Helvetica");
 
@@ -932,6 +1049,7 @@ function generateGenericAgreementPdf({ typeDef, fields, signers }) {
       doc.moveDown(1);
     });
 
+    drawFooter(doc);
     doc.end();
   });
 }
