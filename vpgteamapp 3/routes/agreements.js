@@ -71,7 +71,6 @@ router.get("/dashboard", async (req, res, next) => {
     const [
       result,
       clevelandWeather,
-      recentClosingsResult,
       announcementsResult,
       sentLeaderboardResult,
       signedLeaderboardResult,
@@ -90,14 +89,6 @@ router.get("/dashboard", async (req, res, next) => {
         console.error("Could not fetch Cleveland weather:", err.message);
         return null;
       }),
-      // Celebration banner: any deal closed in the last 7 days.
-      db.query(
-        `SELECT address, sale_price, estimated_profit, closed_at
-         FROM deals
-         WHERE status = 'Closed' AND closed_at > now() - interval '7 days'
-         ORDER BY closed_at DESC
-         LIMIT 5`
-      ),
       // Latest announcements, most recent first.
       db.query(
         `SELECT announcements.id, announcements.body, announcements.created_at, users.name AS author_name
@@ -147,7 +138,6 @@ router.get("/dashboard", async (req, res, next) => {
       types: Object.values(AGREEMENT_TYPES),
       recent: result.rows,
       clevelandWeather,
-      recentClosings: recentClosingsResult.rows,
       announcements: announcementsResult.rows,
       sentLeaderboard: sentLeaderboardResult.rows,
       signedLeaderboard: signedLeaderboardResult.rows,

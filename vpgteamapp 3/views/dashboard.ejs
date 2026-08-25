@@ -23,19 +23,6 @@
       </div>
     </div>
 
-    <% if (recentClosings.length > 0) { %>
-      <div class="celebration-stack">
-        <% recentClosings.forEach(function(d) { %>
-          <div class="celebration-banner">
-            🎉 <strong><%= d.address %></strong> closed
-            <% if (d.estimated_profit !== null && d.estimated_profit !== undefined) { %>
-              &mdash; $<%= Math.round(Number(d.estimated_profit)).toLocaleString('en-US') %> profit
-            <% } %>
-          </div>
-        <% }) %>
-      </div>
-    <% } %>
-
     <div class="dash-grid">
       <div class="card dash-panel">
         <div class="section-label" style="margin-top:0;">Announcements</div>
