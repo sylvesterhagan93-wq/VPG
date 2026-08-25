@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
-const { sendAgreementForSignature } = require("../services/hellosign");
+const { sendAgreementForSignature, downloadSignedPdf } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 
@@ -39,6 +39,33 @@ router.get("/dashboard", async (req, res, next) => {
       types: Object.values(AGREEMENT_TYPES),
       recent: result.rows,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Downloads the fully-executed PDF for an agreement once every signer has
+// signed. HelloSign's callback (routes/webhooks.js) is what flips status to
+// "signed" when that happens; this route just fetches the document fresh
+// from HelloSign on click rather than storing a copy.
+router.get("/agreements/:id/download", async (req, res, next) => {
+  try {
+    const result = await db.query(`SELECT * FROM agreements WHERE id = $1`, [req.params.id]);
+    const agreement = result.rows[0];
+    if (!agreement) return res.status(404).send("Agreement not found.");
+    if (agreement.status !== "signed") {
+      return res.status(400).send("This agreement hasn't been fully signed yet.");
+    }
+    if (!agreement.hellosign_request_id) {
+      return res.status(400).send("No HelloSign request is associated with this agreement.");
+    }
+
+    const pdfBuffer = await downloadSignedPdf(agreement.hellosign_request_id);
+    const filename = `${agreement.type}-${(agreement.property_address || "agreement").replace(/[^a-z0-9]+/gi, "_")}.pdf`;
+
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
   } catch (err) {
     next(err);
   }

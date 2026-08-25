@@ -190,12 +190,20 @@ table.history th {
   font-weight: 600;
 }
 
-.badge.sent { background: var(--success-bg); color: var(--success); }
+.badge.sent { background: #eaf1ff; color: var(--navy); }
+.badge.signed { background: var(--success-bg); color: var(--success); }
 .badge.mock_sent { background: #fff4e0; color: #9a6400; }
 .badge.failed { background: var(--danger-bg); color: var(--danger); }
+.badge.declined { background: var(--danger-bg); color: var(--danger); }
 .badge.active { background: var(--success-bg); color: var(--success); }
 .badge.invited { background: #eaf1ff; color: var(--navy); }
 .badge.deactivated { background: var(--danger-bg); color: var(--danger); }
+
+.download-link {
+  text-decoration: none;
+  white-space: nowrap;
+}
+.download-link:hover { text-decoration: none; }
 
 .kpi-count {
   font-weight: 700;

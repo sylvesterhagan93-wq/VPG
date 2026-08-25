@@ -60,6 +60,26 @@ team from the in-app **Team** tab — see "Managing your team" below.
    with the real API — HelloSign accepts real-looking requests but doesn't
    count them against your account or require signers to actually sign.
 
+## Turning on "Signed" status + the Download button
+
+The dashboard shows each agreement's status, and once every signer has
+signed, the badge changes from "sent" to **"signed"** and a **Download**
+button appears next to it so anyone on the team can pull the fully-executed
+PDF straight from HelloSign. This is driven by a webhook — HelloSign has to
+be told to notify the app the moment a document is fully signed:
+
+1. In HelloSign/Dropbox Sign: **Account Settings → API → Event Callback**.
+2. Set the callback URL to `https://vpgteamapp.onrender.com/webhooks/hellosign`.
+3. Save it. HelloSign sends a test event when you do; the app is already set
+   up to answer it correctly.
+
+Nothing else to configure — the app verifies every incoming callback is
+really from HelloSign (using your API key to check its signature) before
+touching anything, so this endpoint can't be spoofed by someone else
+guessing the URL. The PDF itself is never stored in the app; the Download
+button fetches it fresh from HelloSign each time, so it's always the real,
+current, fully-executed document.
+
 ## Managing your team
 
 Once logged in, there's a **Team** tab in the top nav for everyone on the
@@ -163,10 +183,10 @@ server.js                 entry point
 config/agreementTypes.js  the 4 document types + their fields (edit this to change forms)
 db/                        Postgres (Supabase) connection + seed script
 middleware/                login-required + admin-only route guards
-routes/                    auth (login/logout/invite signup) + agreement routes + team routes
+routes/                    auth (login/logout/invite signup) + agreement routes + team routes + HelloSign webhook
 services/
   pdfGenerator.js          builds the agreement PDF from form data
-  hellosign.js             sends the PDF to HelloSign (or mocks it)
+  hellosign.js             sends the PDF to HelloSign (or mocks it), downloads the signed PDF
 views/                     EJS templates (login, dashboard, form, confirmation, team, signup)
 public/css/style.css       styling
 public/images/             your logo + ocean background

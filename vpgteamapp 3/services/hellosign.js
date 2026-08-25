@@ -99,4 +99,24 @@ async function sendAgreementForSignature({ type, fields, signers, sentByName }) 
   }
 }
 
-module.exports = { sendAgreementForSignature };
+/**
+ * Downloads the final signed PDF for a completed signature request, for the
+ * dashboard's "Download" button. Always fetched fresh from HelloSign rather
+ * than stored locally, so it's always the real, current, fully-executed
+ * document (with HelloSign's signature/audit trail embedded) instead of a
+ * copy the app has to keep in sync.
+ */
+async function downloadSignedPdf(requestId) {
+  const apiKey = process.env.HELLOSIGN_API_KEY;
+  if (!apiKey) throw new Error("HELLOSIGN_API_KEY is not configured");
+
+  const response = await axios.get(`${HELLOSIGN_API_BASE}/signature_request/files/${requestId}`, {
+    params: { file_type: "pdf" },
+    auth: { username: apiKey, password: "" },
+    responseType: "arraybuffer",
+  });
+
+  return Buffer.from(response.data);
+}
+
+module.exports = { sendAgreementForSignature, downloadSignedPdf };

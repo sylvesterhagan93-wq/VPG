@@ -7,6 +7,7 @@ const requireAuth = require("./middleware/requireAuth");
 const authRoutes = require("./routes/auth");
 const agreementRoutes = require("./routes/agreements");
 const teamRoutes = require("./routes/team");
+const webhookRoutes = require("./routes/webhooks");
 
 require("./db/db"); // Postgres (Supabase) connection pool - schema is managed via migrations, not created here
 
@@ -32,6 +33,11 @@ app.use(
 app.get("/", (req, res) => {
   res.redirect(req.session.userId ? "/dashboard" : "/login");
 });
+
+// HelloSign calls this directly (not the team's browser), so it's
+// intentionally outside requireAuth - it's authenticated a different way,
+// by verifying HelloSign's event_hash signature (see routes/webhooks.js).
+app.use(webhookRoutes);
 
 app.use(authRoutes);
 app.use(requireAuth, agreementRoutes);

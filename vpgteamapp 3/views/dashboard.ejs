@@ -43,6 +43,7 @@
               <th>Sent By</th>
               <th>Status</th>
               <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -54,6 +55,11 @@
                 <td><%= a.sent_by_name %></td>
                 <td><span class="badge <%= a.status %>"><%= a.status.replace('_', ' ') %></span></td>
                 <td><%= new Date(a.created_at).toLocaleString('en-US') %></td>
+                <td>
+                  <% if (a.status === 'signed') { %>
+                    <a class="btn-tiny download-link" href="/agreements/<%= a.id %>/download">Download</a>
+                  <% } %>
+                </td>
               </tr>
             <% }) %>
           </tbody>
