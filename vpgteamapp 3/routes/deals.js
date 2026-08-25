@@ -8,6 +8,7 @@ const {
   MARKETING_CHANNEL_SUGGESTIONS,
   MONTHLY_CLOSED_PROFIT_GOAL,
 } = require("../config/dealBoard");
+const { buildZillowUrl } = require("../services/zillow");
 
 const router = express.Router();
 
@@ -104,6 +105,7 @@ router.get("/dealboard", async (req, res, next) => {
       selectedMonthLabel: monthLabel(selectedMonthKey),
       isCurrentMonth: selectedMonthKey === currentMonthKey,
       error: req.session.dealBoardError || null,
+      zillowUrl: buildZillowUrl,
     });
     delete req.session.dealBoardError;
   } catch (err) {

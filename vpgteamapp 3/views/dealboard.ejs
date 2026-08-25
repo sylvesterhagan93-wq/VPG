@@ -88,7 +88,7 @@
                 %>
                 <tr>
                   <td>
-                    <%= d.address %>
+                    <a href="<%= zillowUrl(d.address) %>" target="_blank" rel="noopener noreferrer" title="View on Zillow"><%= d.address %></a>
                     <% if (d.deal_folder_url) { %>
                       <br /><a href="<%= d.deal_folder_url %>" target="_blank" rel="noopener" style="font-size:12px;">Deal Folder &rarr;</a>
                     <% } %>
