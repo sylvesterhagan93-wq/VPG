@@ -6,6 +6,7 @@ const path = require("path");
 const requireAuth = require("./middleware/requireAuth");
 const authRoutes = require("./routes/auth");
 const agreementRoutes = require("./routes/agreements");
+const teamRoutes = require("./routes/team");
 
 require("./db/db"); // Postgres (Supabase) connection pool - schema is managed via migrations, not created here
 
@@ -34,6 +35,7 @@ app.get("/", (req, res) => {
 
 app.use(authRoutes);
 app.use(requireAuth, agreementRoutes);
+app.use(requireAuth, teamRoutes);
 
 app.use((req, res) => {
   res.status(404).send("Page not found.");

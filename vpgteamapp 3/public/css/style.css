@@ -53,6 +53,25 @@ a:hover { text-decoration: underline; }
   display: block;
 }
 
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-left: 8px;
+}
+
+.topnav a {
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.topnav a:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
 .topbar .user-info {
   display: flex;
   align-items: center;
@@ -174,6 +193,81 @@ table.history th {
 .badge.sent { background: var(--success-bg); color: var(--success); }
 .badge.mock_sent { background: #fff4e0; color: #9a6400; }
 .badge.failed { background: var(--danger-bg); color: var(--danger); }
+.badge.active { background: var(--success-bg); color: var(--success); }
+.badge.invited { background: #eaf1ff; color: var(--navy); }
+.badge.deactivated { background: var(--danger-bg); color: var(--danger); }
+
+.kpi-count {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.kpi-count.zero { color: var(--muted); font-weight: 400; }
+
+.you-tag {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.invite-box {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.invite-box .field { margin-bottom: 0; flex: 1; min-width: 180px; }
+
+.link-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #eaf1ff;
+  border: 1px solid #c9dbff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 20px;
+}
+
+.link-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--navy);
+  font-family: monospace;
+  padding: 4px;
+}
+.link-box input:focus { outline: none; }
+
+.link-box button {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link-box button:hover { background: var(--accent-hover); }
+
+.btn-tiny {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-tiny:hover { background: var(--danger-bg); color: var(--danger); border-color: #f0c6c2; }
+
+.btn-tiny.reactivate:hover { background: var(--success-bg); color: var(--success); border-color: #b7e0c6; }
 
 .form-grid {
   display: grid;

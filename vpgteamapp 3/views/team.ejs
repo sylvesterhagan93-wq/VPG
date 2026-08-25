@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Team</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Team</div>
+    <div class="page-subtitle">Your team, and how many agreements each person has sent this week.</div>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <% if (newInviteLink) { %>
+      <div class="link-box">
+        <input type="text" readonly value="<%= newInviteLink %>" id="invite-link-input" onclick="this.select()" />
+        <button type="button" onclick="copyInviteLink()">Copy Link</button>
+      </div>
+      <div class="page-subtitle" style="margin-top:-14px;">
+        Send this link to your new teammate however you like (text, email, Slack). It works once and expires in 7 days.
+      </div>
+    <% } %>
+
+    <% if (isAdmin) { %>
+      <div class="card" style="margin-bottom: 28px;">
+        <div class="section-label" style="margin-top:0;">Add Team Member</div>
+        <form method="POST" action="/team/invite" class="invite-box">
+          <div class="field">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required />
+          </div>
+          <button type="submit" class="btn">Generate Invite Link</button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="card">
+      <table class="history">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Sent This Week</th>
+            <th>Sent All-Time</th>
+            <% if (isAdmin) { %><th></th><% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% members.forEach(function(m) { %>
+            <tr>
+              <td>
+                <%= m.name %><% if (m.is_admin) { %> <span class="you-tag">(admin)</span><% } %>
+                <% if (m.id === currentUserId) { %> <span class="you-tag">(you)</span><% } %>
+              </td>
+              <td><%= m.email %></td>
+              <td><span class="badge <%= m.status %>"><%= m.status %></span></td>
+              <td>
+                <span class="kpi-count <%= Number(m.sent_this_week) === 0 ? 'zero' : '' %>"><%= m.sent_this_week %></span>
+              </td>
+              <td><%= m.sent_all_time %></td>
+              <% if (isAdmin) { %>
+                <td>
+                  <% if (m.id !== currentUserId) { %>
+                    <% if (m.status === 'deactivated') { %>
+                      <form method="POST" action="/team/<%= m.id %>/reactivate" style="display:inline;">
+                        <button type="submit" class="btn-tiny reactivate">Reactivate</button>
+                      </form>
+                    <% } else { %>
+                      <form method="POST" action="/team/<%= m.id %>/remove" style="display:inline;"
+                            onsubmit="return confirm('Remove ' + <%- JSON.stringify(m.name) %> + ' from the team?');">
+                        <button type="submit" class="btn-tiny">Remove</button>
+                      </form>
+                    <% } %>
+                  <% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function copyInviteLink() {
+      const input = document.getElementById('invite-link-input');
+      input.select();
+      navigator.clipboard && navigator.clipboard.writeText(input.value);
+    }
+  </script>
+</body>
+</html>

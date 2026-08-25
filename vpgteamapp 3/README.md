@@ -43,13 +43,13 @@ SQLite file, so you'll need a `DATABASE_URL` before it can start:
 ```
 npm install
 cp .env.example .env    # fill in DATABASE_URL (from Supabase) and other values
-npm run seed             # creates one login: admin@vpgteamapp.com / ChangeMe123!
+npm run seed             # creates one login: admin@vpgteamapp.com / ChangeMe123! (only if no admin exists yet)
 npm start
 ```
 
-Then visit `http://localhost:3000` and log in with the seeded account.
-**Change that password or add real team accounts before this goes live** —
-see "Managing team logins" below.
+Then visit `http://localhost:3000` and log in with the seeded account (or,
+on the live site, your real admin login). From there, add the rest of the
+team from the in-app **Team** tab — see "Managing your team" below.
 
 ## Connecting your real HelloSign account
 
@@ -61,14 +61,38 @@ see "Managing team logins" below.
    with the real API — HelloSign accepts real-looking requests but doesn't
    count them against your account or require signers to actually sign.
 
-## Managing team logins
+## Managing your team
 
-There's no self-serve signup screen on purpose — this is meant to be an
-internal tool with a small, known team. To add a teammate, either:
+Once logged in, there's a **Team** tab in the top nav for everyone on the
+team, and it doubles as a lightweight KPI dashboard:
 
-- Edit `db/seed.js`, add another entry to `SEED_USERS`, and run
-  `npm run seed` again (it skips users that already exist), or
-- Ask and I can add a simple "add teammate" admin screen.
+- Every team member sees the full roster with each person's status
+  (Active / Invited / Deactivated), how many agreements they've sent
+  **this week**, and how many they've sent all-time — so you can see at a
+  glance who's actively sending deals.
+- **Only the admin account** (you) sees the "Add Team Member" box and the
+  Remove/Reactivate buttons — everyone else gets a read-only view of the
+  roster.
+
+**Adding a teammate:** On the Team page, enter their name and email and
+click **Generate Invite Link**. This doesn't send an email automatically —
+it hands you back a one-time signup link that you send however you like
+(text, Slack, email). The link is valid for 7 days and lets them set their
+own name and password to activate the account. Until they use it, they show
+up in the roster with an "Invited" badge.
+
+**Removing a teammate:** Click **Remove** next to their name (you'll be
+asked to confirm). If they'd already sent agreements, their account is
+deactivated rather than deleted, so the send history stays intact and
+attributed to them — they just can no longer log in. You can bring a
+deactivated account back at any time with **Reactivate**. An invite that
+was never accepted is deleted outright when removed, since there's no
+history tied to it yet.
+
+You can't remove or deactivate your own admin account from the Team page.
+
+The very first admin login (yours) was created directly in the database
+when this was set up — there's no separate step needed for that.
 
 ## The four document types and their fields
 
@@ -113,11 +137,12 @@ contract language, not just a generic field summary.
 server.js                 entry point
 config/agreementTypes.js  the 4 document types + their fields (edit this to change forms)
 db/                        Postgres (Supabase) connection + seed script
-routes/                    auth + agreement routes
+middleware/                login-required + admin-only route guards
+routes/                    auth (login/logout/invite signup) + agreement routes + team routes
 services/
   pdfGenerator.js          builds the agreement PDF from form data
   hellosign.js             sends the PDF to HelloSign (or mocks it)
-views/                     EJS templates (login, dashboard, form, confirmation)
+views/                     EJS templates (login, dashboard, form, confirmation, team, signup)
 public/css/style.css       styling
 public/images/             your logo + ocean background
 ```
