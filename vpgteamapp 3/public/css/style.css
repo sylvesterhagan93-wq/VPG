@@ -112,6 +112,37 @@ a:hover { text-decoration: underline; }
   font-size: 14px;
 }
 
+.cleveland-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.cleveland-widget-loc {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.cleveland-widget-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.cleveland-widget-sep {
+  color: var(--border);
+}
+
+.cleveland-widget-weather {
+  color: var(--muted);
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);

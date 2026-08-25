@@ -87,6 +87,19 @@ it's actually fully signed. So status will show correctly either way; the
 callback URL just makes it happen the instant it's signed instead of the
 next time someone opens the dashboard.
 
+## Cleveland weather & time
+
+Since the team is spread out everywhere but the business runs on Cleveland
+time, the dashboard shows a small "Cleveland, OH" widget at the top with
+the current local time (ticking live, second by second) and the current
+temperature/conditions. The time comes straight from the browser's clock
+formatted for Cleveland's timezone, so it's always accurate with no network
+call needed. The weather comes from Open-Meteo (free, no API key required)
+and refreshes automatically every 15 minutes for anyone who leaves the
+dashboard open; if the weather API is ever slow or unreachable, the rest of
+the dashboard still loads normally and the widget just shows "Weather
+unavailable."
+
 ## Deal Board
 
 There's a **Deal Board** tab in the top nav, built to match your "VPG

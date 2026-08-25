@@ -10,6 +10,19 @@
   <%- include('partials/topbar') %>
 
   <div class="container">
+    <div class="cleveland-widget">
+      <div class="cleveland-widget-loc">Cleveland, OH</div>
+      <div class="cleveland-widget-time" id="cleveland-time">&mdash;</div>
+      <div class="cleveland-widget-sep">&middot;</div>
+      <div class="cleveland-widget-weather" id="cleveland-weather">
+        <% if (clevelandWeather && clevelandWeather.tempF !== undefined) { %>
+          <%= clevelandWeather.tempF %>&deg;F<% if (clevelandWeather.description) { %>, <%= clevelandWeather.description %><% } %>
+        <% } else { %>
+          Weather unavailable
+        <% } %>
+      </div>
+    </div>
+
     <div class="page-title">Send an Agreement</div>
     <div class="page-subtitle">Pick a document type, fill in the details, and it will be sent out for signature.</div>
 
@@ -67,5 +80,40 @@
       <% } %>
     </div>
   </div>
+
+  <script>
+    // Always Cleveland's local time, no matter where whoever's looking at
+    // the dashboard actually is - ticks every second off the system clock,
+    // just formatted for the America/New_York timezone.
+    var clevelandTimeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+
+    function tickClevelandTime() {
+      var el = document.getElementById('cleveland-time');
+      if (el) el.textContent = clevelandTimeFormatter.format(new Date());
+    }
+    tickClevelandTime();
+    setInterval(tickClevelandTime, 1000);
+
+    // Weather doesn't need per-second updates - refresh it quietly every 15
+    // minutes for anyone who leaves the dashboard open. Best-effort: if the
+    // request fails, just leave whatever was already showing.
+    function refreshClevelandWeather() {
+      fetch('/weather/cleveland')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var el = document.getElementById('cleveland-weather');
+          if (!el || !data || data.tempF === undefined) return;
+          el.textContent = data.tempF + '°F' + (data.description ? ', ' + data.description : '');
+        })
+        .catch(function () { /* leave the last known value showing */ });
+    }
+    setInterval(refreshClevelandWeather, 15 * 60 * 1000);
+  </script>
 </body>
 </html>

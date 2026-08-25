@@ -5,6 +5,7 @@ const { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatu
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 const { TITLE_COMPANIES } = require("../config/titleCompanies");
+const { getClevelandWeather } = require("../services/weather");
 
 const router = express.Router();
 
@@ -67,21 +68,44 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const result = await db.query(
-      `SELECT agreements.*, users.name AS sent_by_name
-       FROM agreements
-       JOIN users ON users.id = agreements.sent_by_user_id
-       ORDER BY agreements.created_at DESC
-       LIMIT 25`
-    );
+    const [result, clevelandWeather] = await Promise.all([
+      db.query(
+        `SELECT agreements.*, users.name AS sent_by_name
+         FROM agreements
+         JOIN users ON users.id = agreements.sent_by_user_id
+         ORDER BY agreements.created_at DESC
+         LIMIT 25`
+      ),
+      // Best-effort - a slow/unreachable weather API should never stall or
+      // break the dashboard, so any failure here just falls back to null.
+      getClevelandWeather().catch((err) => {
+        console.error("Could not fetch Cleveland weather:", err.message);
+        return null;
+      }),
+    ]);
 
     res.render("dashboard", {
       userName: req.session.userName,
       types: Object.values(AGREEMENT_TYPES),
       recent: result.rows,
+      clevelandWeather,
     });
   } catch (err) {
     next(err);
+  }
+});
+
+// Lets the dashboard's Cleveland widget refresh the weather (not the
+// server-rendered initial value) every so often without a full page
+// reload. Same best-effort shape as the initial render - {} on any failure
+// rather than an error, since this is a "nice to have" refresh.
+router.get("/weather/cleveland", async (req, res) => {
+  try {
+    const weather = await getClevelandWeather();
+    res.json(weather || {});
+  } catch (err) {
+    console.error("Could not fetch Cleveland weather:", err.message);
+    res.json({});
   }
 });
 
