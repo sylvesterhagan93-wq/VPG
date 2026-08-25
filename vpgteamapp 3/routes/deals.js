@@ -9,6 +9,7 @@ const {
   MONTHLY_CLOSED_PROFIT_GOAL,
 } = require("../config/dealBoard");
 const { buildZillowUrl } = require("../services/zillow");
+const { buildBarChart, buildHBarChart } = require("../services/charts");
 
 const router = express.Router();
 
@@ -37,6 +38,14 @@ function parseMoney(v) {
   return isNaN(num) ? null : num;
 }
 
+// A blank <input type="date"> submits as "" - store NULL rather than an
+// invalid date.
+function parseDateOrNull(v) {
+  if (v === undefined || v === null) return null;
+  const trimmed = String(v).trim();
+  return trimmed || null;
+}
+
 function dealFormDefaults() {
   return {
     address: "",
@@ -53,6 +62,7 @@ function dealFormDefaults() {
     misc_deal_costs: "",
     notes: "",
     deal_folder_url: "",
+    expected_closing_date: "",
   };
 }
 
@@ -119,6 +129,39 @@ router.get("/dealboard", async (req, res, next) => {
         : null;
     summary.avgClosePctCount = pctRows.length;
 
+    // Trend charts - monthly closed profit (last 12 calendar months,
+    // zero-filled so a quiet month shows as a real gap rather than
+    // disappearing) and a lifetime deals-by-exit-strategy breakdown.
+    const monthlyProfitResult = await db.query(
+      `SELECT to_char(closed_at, 'YYYY-MM') AS month_key, COALESCE(SUM(estimated_profit), 0) AS profit
+       FROM deals
+       WHERE status = 'Closed' AND closed_at >= (CURRENT_DATE - INTERVAL '11 months')
+       GROUP BY month_key`
+    );
+    const monthlyProfitMap = new Map(monthlyProfitResult.rows.map((r) => [r.month_key, Number(r.profit)]));
+    const trendItems = [];
+    const today = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const value = monthlyProfitMap.get(key) || 0;
+      trendItems.push({
+        label: d.toLocaleDateString("en-US", { month: "short" }),
+        value,
+        valueLabel: "$" + Math.round(value).toLocaleString("en-US"),
+      });
+    }
+    const profitTrendChart = buildBarChart(trendItems, { width: 640, height: 220 });
+
+    const exitStrategyResult = await db.query(
+      `SELECT COALESCE(NULLIF(TRIM(exit_strategy), ''), 'Unspecified') AS label, COUNT(*) AS count
+       FROM deals
+       GROUP BY 1
+       ORDER BY count DESC`
+    );
+    const exitItems = exitStrategyResult.rows.map((r) => ({ label: r.label, value: Number(r.count) }));
+    const exitStrategyChart = buildHBarChart(exitItems, { width: 640, rowHeight: 36 });
+
     res.render("dealboard", {
       userName: req.session.userName,
       isAdmin: req.session.isAdmin,
@@ -131,6 +174,10 @@ router.get("/dealboard", async (req, res, next) => {
       isCurrentMonth: selectedMonthKey === currentMonthKey,
       error: req.session.dealBoardError || null,
       zillowUrl: buildZillowUrl,
+      profitTrendChart,
+      exitStrategyChart,
+      hasClosedInWindow: trendItems.some((i) => i.value > 0),
+      hasAnyDeals: exitItems.length > 0,
     });
     delete req.session.dealBoardError;
   } catch (err) {
@@ -173,8 +220,8 @@ router.post("/dealboard/new", async (req, res, next) => {
       `INSERT INTO deals
         (address, property_type, exit_strategy, marketing_channel, buy_price, estimated_rehab,
          arv, sale_price, estimated_profit, status, emd_received, misc_deal_costs, notes,
-         deal_folder_url, created_by_user_id, closed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+         deal_folder_url, created_by_user_id, closed_at, expected_closing_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [
         body.address.trim(),
         (body.property_type || "").trim() || null,
@@ -192,6 +239,7 @@ router.post("/dealboard/new", async (req, res, next) => {
         (body.deal_folder_url || "").trim() || null,
         req.session.userId,
         status === "Closed" ? new Date() : null,
+        parseDateOrNull(body.expected_closing_date),
       ]
     );
     res.redirect("/dealboard");
@@ -254,8 +302,8 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
          address = $1, property_type = $2, exit_strategy = $3, marketing_channel = $4,
          buy_price = $5, estimated_rehab = $6, arv = $7, sale_price = $8, estimated_profit = $9,
          status = $10, emd_received = $11, misc_deal_costs = $12, notes = $13,
-         deal_folder_url = $14, updated_at = now(), closed_at = $15
-       WHERE id = $16`,
+         deal_folder_url = $14, updated_at = now(), closed_at = $15, expected_closing_date = $16
+       WHERE id = $17`,
       [
         body.address.trim(),
         (body.property_type || "").trim() || null,
@@ -272,6 +320,7 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
         (body.notes || "").trim() || null,
         (body.deal_folder_url || "").trim() || null,
         closedAt,
+        parseDateOrNull(body.expected_closing_date),
         req.params.id,
       ]
     );

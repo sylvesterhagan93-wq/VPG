@@ -23,6 +23,99 @@
       </div>
     </div>
 
+    <% if (recentClosings.length > 0) { %>
+      <div class="celebration-stack">
+        <% recentClosings.forEach(function(d) { %>
+          <div class="celebration-banner">
+            🎉 <strong><%= d.address %></strong> closed
+            <% if (d.estimated_profit !== null && d.estimated_profit !== undefined) { %>
+              &mdash; $<%= Math.round(Number(d.estimated_profit)).toLocaleString('en-US') %> profit
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <div class="dash-grid">
+      <div class="card dash-panel">
+        <div class="section-label" style="margin-top:0;">Announcements</div>
+        <% if (announcements.length === 0) { %>
+          <div class="empty-state">No announcements yet.</div>
+        <% } else { %>
+          <% announcements.forEach(function(a) { %>
+            <div class="announcement-item">
+              <p><%= a.body %></p>
+              <div class="announcement-meta">
+                <%= a.author_name %> &middot; <%= new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
+                <% if (isAdmin) { %>
+                  <form method="POST" action="/announcements/<%= a.id %>/delete" style="display:inline;"
+                        onsubmit="return confirm('Delete this announcement?');">
+                    <button type="submit" class="linklike-delete">Delete</button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+        <% if (isAdmin) { %>
+          <form method="POST" action="/announcements" class="announcement-form">
+            <textarea name="body" placeholder="Post an announcement to the team..." required></textarea>
+            <button type="submit" class="btn-tiny">Post</button>
+          </form>
+        <% } %>
+      </div>
+
+      <div class="card dash-panel">
+        <div class="section-label" style="margin-top:0;">Leaderboard</div>
+        <div class="leaderboard-block">
+          <div class="leaderboard-title">Most Sent This Week</div>
+          <% if (sentLeaderboard.length === 0) { %>
+            <div class="empty-state">No agreements sent this week yet.</div>
+          <% } else { %>
+            <ol class="leaderboard-list">
+              <% sentLeaderboard.forEach(function(row) { %>
+                <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
+              <% }) %>
+            </ol>
+          <% } %>
+        </div>
+        <div class="leaderboard-block">
+          <div class="leaderboard-title">Most Signed This Month</div>
+          <% if (signedLeaderboard.length === 0) { %>
+            <div class="empty-state">No agreements signed this month yet.</div>
+          <% } else { %>
+            <ol class="leaderboard-list">
+              <% signedLeaderboard.forEach(function(row) { %>
+                <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
+              <% }) %>
+            </ol>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="card dash-panel">
+        <div class="section-label" style="margin-top:0;">Upcoming Closings</div>
+        <% if (upcomingClosings.length === 0) { %>
+          <div class="empty-state">Nothing with an expected closing date coming up.</div>
+        <% } else { %>
+          <ul class="closings-list">
+            <% upcomingClosings.forEach(function(d) { %>
+              <%
+                const daysUntil = Math.ceil((new Date(d.expected_closing_date) - new Date(new Date().toDateString())) / (1000 * 60 * 60 * 24));
+              %>
+              <li>
+                <span class="closings-address"><%= d.address %></span>
+                <span class="closings-date">
+                  <%= new Date(d.expected_closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
+                  <span class="you-tag"><%= daysUntil === 0 ? 'today' : (daysUntil === 1 ? 'tomorrow' : daysUntil + ' days') %></span>
+                </span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </div>
+
     <div class="page-title">Send an Agreement</div>
     <div class="page-subtitle">Pick a document type, fill in the details, and it will be sent out for signature.</div>
 

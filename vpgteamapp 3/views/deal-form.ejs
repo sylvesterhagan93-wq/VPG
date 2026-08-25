@@ -54,6 +54,10 @@
               <% }) %>
             </select>
           </div>
+          <div class="field">
+            <label for="expected_closing_date">Expected Closing Date</label>
+            <input type="date" id="expected_closing_date" name="expected_closing_date" value="<%= deal.expected_closing_date ? new Date(deal.expected_closing_date).toISOString().slice(0, 10) : '' %>" />
+          </div>
         </div>
 
         <div class="section-label">Numbers</div>

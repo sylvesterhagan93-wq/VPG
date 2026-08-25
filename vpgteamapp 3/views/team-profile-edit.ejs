@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Edit My Profile</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title">Edit My Profile</div>
+    <div class="page-subtitle">Set your job title and a photo so the rest of the team knows who's who.</div>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <div class="card" style="max-width:480px;">
+      <form method="POST" action="/team/profile/edit">
+        <div class="field">
+          <label for="role">Job Title</label>
+          <input type="text" id="role" name="role" value="<%= me.role || '' %>" placeholder="e.g. Acquisitions Manager" />
+        </div>
+        <div class="field">
+          <label for="avatar_url">Photo URL</label>
+          <input type="url" id="avatar_url" name="avatar_url" value="<%= me.avatar_url || '' %>" placeholder="https://..." />
+        </div>
+        <div class="page-subtitle" style="margin-top:-8px;">
+          Paste a link to an image already hosted somewhere (e.g. a photo you've uploaded to Google
+          Drive/Photos with link sharing on). Leave blank to just show your initial instead.
+        </div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button type="submit" class="btn">Save</button>
+          <a href="/team" class="btn-secondary" style="display:inline-flex; align-items:center; padding:0 16px; border-radius:6px; text-decoration:none;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

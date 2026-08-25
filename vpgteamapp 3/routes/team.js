@@ -17,6 +17,9 @@ router.get("/team", async (req, res, next) => {
          users.is_admin,
          users.status,
          users.invite_token,
+         users.role,
+         users.avatar_url,
+         users.created_at,
          COUNT(agreements.id) FILTER (
            WHERE agreements.created_at >= date_trunc('week', now())
          ) AS sent_this_week,
@@ -39,6 +42,44 @@ router.get("/team", async (req, res, next) => {
     // one-time flash values
     delete req.session.newInviteLink;
     delete req.session.teamError;
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Self-service profile edit - any logged-in user can set their own job
+// title and photo (an image URL, since there's no file-upload storage
+// wired up). Deliberately scoped to req.session.userId only, never a
+// submitted id, so no one can edit anyone else's profile this way.
+router.get("/team/profile/edit", async (req, res, next) => {
+  try {
+    const result = await db.query("SELECT name, role, avatar_url FROM users WHERE id = $1", [
+      req.session.userId,
+    ]);
+    const me = result.rows[0];
+    if (!me) return res.status(404).send("Account not found.");
+
+    res.render("team-profile-edit", {
+      userName: req.session.userName,
+      me,
+      error: null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/team/profile/edit", async (req, res, next) => {
+  const role = (req.body.role || "").trim();
+  const avatarUrl = (req.body.avatar_url || "").trim();
+
+  try {
+    await db.query("UPDATE users SET role = $1, avatar_url = $2 WHERE id = $3", [
+      role || null,
+      avatarUrl || null,
+      req.session.userId,
+    ]);
+    res.redirect("/team");
   } catch (err) {
     next(err);
   }

@@ -48,43 +48,59 @@
       <table class="history">
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Team Member</th>
             <th>Email</th>
+            <th>Member Since</th>
             <th>Status</th>
             <th>Sent This Week</th>
             <th>Sent All-Time</th>
-            <% if (isAdmin) { %><th></th><% } %>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           <% members.forEach(function(m) { %>
             <tr>
               <td>
-                <%= m.name %><% if (m.is_admin) { %> <span class="you-tag">(admin)</span><% } %>
-                <% if (m.id === currentUserId) { %> <span class="you-tag">(you)</span><% } %>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <% if (m.avatar_url) { %>
+                    <img src="<%= m.avatar_url %>" alt="" class="avatar-circle" />
+                  <% } else { %>
+                    <div class="avatar-circle avatar-placeholder"><%= m.name ? m.name.charAt(0).toUpperCase() : '?' %></div>
+                  <% } %>
+                  <div>
+                    <div>
+                      <%= m.name %><% if (m.is_admin) { %> <span class="you-tag">(admin)</span><% } %>
+                      <% if (m.id === currentUserId) { %> <span class="you-tag">(you)</span><% } %>
+                    </div>
+                    <% if (m.role) { %><div class="member-role"><%= m.role %></div><% } %>
+                  </div>
+                </div>
               </td>
               <td><%= m.email %></td>
+              <td>
+                <%= m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-' %>
+              </td>
               <td><span class="badge <%= m.status %>"><%= m.status %></span></td>
               <td>
                 <span class="kpi-count <%= Number(m.sent_this_week) === 0 ? 'zero' : '' %>"><%= m.sent_this_week %></span>
               </td>
               <td><%= m.sent_all_time %></td>
-              <% if (isAdmin) { %>
-                <td>
-                  <% if (m.id !== currentUserId) { %>
-                    <% if (m.status === 'deactivated') { %>
-                      <form method="POST" action="/team/<%= m.id %>/reactivate" style="display:inline;">
-                        <button type="submit" class="btn-tiny reactivate">Reactivate</button>
-                      </form>
-                    <% } else { %>
-                      <form method="POST" action="/team/<%= m.id %>/remove" style="display:inline;"
-                            onsubmit="return confirm('Remove ' + <%- JSON.stringify(m.name) %> + ' from the team?');">
-                        <button type="submit" class="btn-tiny">Remove</button>
-                      </form>
-                    <% } %>
+              <td style="white-space:nowrap;">
+                <% if (m.id === currentUserId) { %>
+                  <a href="/team/profile/edit" class="btn-tiny">Edit My Profile</a>
+                <% } else if (isAdmin) { %>
+                  <% if (m.status === 'deactivated') { %>
+                    <form method="POST" action="/team/<%= m.id %>/reactivate" style="display:inline;">
+                      <button type="submit" class="btn-tiny reactivate">Reactivate</button>
+                    </form>
+                  <% } else { %>
+                    <form method="POST" action="/team/<%= m.id %>/remove" style="display:inline;"
+                          onsubmit="return confirm('Remove ' + <%- JSON.stringify(m.name) %> + ' from the team?');">
+                      <button type="submit" class="btn-tiny">Remove</button>
+                    </form>
                   <% } %>
-                </td>
-              <% } %>
+                <% } %>
+              </td>
             </tr>
           <% }) %>
         </tbody>

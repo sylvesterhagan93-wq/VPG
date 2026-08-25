@@ -68,7 +68,15 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const [result, clevelandWeather] = await Promise.all([
+    const [
+      result,
+      clevelandWeather,
+      recentClosingsResult,
+      announcementsResult,
+      sentLeaderboardResult,
+      signedLeaderboardResult,
+      upcomingClosingsResult,
+    ] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
          FROM agreements
@@ -82,13 +90,68 @@ router.get("/dashboard", async (req, res, next) => {
         console.error("Could not fetch Cleveland weather:", err.message);
         return null;
       }),
+      // Celebration banner: any deal closed in the last 7 days.
+      db.query(
+        `SELECT address, sale_price, estimated_profit, closed_at
+         FROM deals
+         WHERE status = 'Closed' AND closed_at > now() - interval '7 days'
+         ORDER BY closed_at DESC
+         LIMIT 5`
+      ),
+      // Latest announcements, most recent first.
+      db.query(
+        `SELECT announcements.id, announcements.body, announcements.created_at, users.name AS author_name
+         FROM announcements
+         JOIN users ON users.id = announcements.created_by_user_id
+         ORDER BY announcements.created_at DESC
+         LIMIT 5`
+      ),
+      // Leaderboard: most agreements sent this (calendar) week.
+      db.query(
+        `SELECT users.name, COUNT(agreements.id) AS count
+         FROM users
+         JOIN agreements ON agreements.sent_by_user_id = users.id
+           AND agreements.created_at >= date_trunc('week', now())
+         GROUP BY users.id
+         HAVING COUNT(agreements.id) > 0
+         ORDER BY count DESC, users.name ASC
+         LIMIT 3`
+      ),
+      // Leaderboard: most agreements signed this calendar month.
+      db.query(
+        `SELECT users.name, COUNT(agreements.id) AS count
+         FROM users
+         JOIN agreements ON agreements.sent_by_user_id = users.id
+           AND agreements.status = 'signed'
+           AND to_char(agreements.signed_at, 'YYYY-MM') = to_char(now(), 'YYYY-MM')
+         GROUP BY users.id
+         HAVING COUNT(agreements.id) > 0
+         ORDER BY count DESC, users.name ASC
+         LIMIT 3`
+      ),
+      // Upcoming closings: deals still open with an expected closing date.
+      db.query(
+        `SELECT id, address, expected_closing_date, status
+         FROM deals
+         WHERE expected_closing_date IS NOT NULL
+           AND expected_closing_date >= CURRENT_DATE
+           AND status IN ('Active', 'UCB')
+         ORDER BY expected_closing_date ASC
+         LIMIT 8`
+      ),
     ]);
 
     res.render("dashboard", {
       userName: req.session.userName,
+      isAdmin: req.session.isAdmin,
       types: Object.values(AGREEMENT_TYPES),
       recent: result.rows,
       clevelandWeather,
+      recentClosings: recentClosingsResult.rows,
+      announcements: announcementsResult.rows,
+      sentLeaderboard: sentLeaderboardResult.rows,
+      signedLeaderboard: signedLeaderboardResult.rows,
+      upcomingClosings: upcomingClosingsResult.rows,
     });
   } catch (err) {
     next(err);

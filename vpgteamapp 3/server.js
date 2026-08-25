@@ -10,6 +10,7 @@ const teamRoutes = require("./routes/team");
 const dealRoutes = require("./routes/deals");
 const newsRoutes = require("./routes/news");
 const merchRoutes = require("./routes/merch");
+const announcementRoutes = require("./routes/announcements");
 const webhookRoutes = require("./routes/webhooks");
 
 require("./db/db"); // Postgres (Supabase) connection pool - schema is managed via migrations, not created here
@@ -47,6 +48,7 @@ app.use(requireAuth, agreementRoutes);
 app.use(requireAuth, dealRoutes);
 app.use(requireAuth, newsRoutes);
 app.use(requireAuth, merchRoutes);
+app.use(requireAuth, announcementRoutes);
 app.use(requireAuth, teamRoutes);
 
 app.use((req, res) => {

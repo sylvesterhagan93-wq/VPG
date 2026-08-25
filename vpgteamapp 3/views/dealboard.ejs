@@ -67,6 +67,45 @@
       </div>
     </div>
 
+    <div class="dash-grid" style="margin-bottom:28px;">
+      <div class="card dash-panel">
+        <div class="section-label" style="margin-top:0;">Monthly Closed Profit <span class="you-tag">(last 12 months)</span></div>
+        <% if (!hasClosedInWindow) { %>
+          <div class="empty-state">No closed deals in the last 12 months yet.</div>
+        <% } else { %>
+          <svg class="chart-svg" viewBox="0 0 <%= profitTrendChart.width %> <%= profitTrendChart.height %>" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Monthly closed profit, last 12 months">
+            <line x1="0" y1="<%= profitTrendChart.baselineY %>" x2="<%= profitTrendChart.width %>" y2="<%= profitTrendChart.baselineY %>" class="chart-baseline" />
+            <% profitTrendChart.bars.forEach(function(b) { %>
+              <path d="<%= b.path %>" class="chart-bar">
+                <title><%= b.label %>: <%= b.valueLabel %></title>
+              </path>
+              <% if (b.value > 0) { %>
+                <text x="<%= b.centerX %>" y="<%= b.y - 6 %>" class="chart-value-label" text-anchor="middle"><%= b.valueLabel %></text>
+              <% } %>
+              <text x="<%= b.centerX %>" y="<%= profitTrendChart.baselineY + 16 %>" class="chart-axis-label" text-anchor="middle"><%= b.label %></text>
+            <% }) %>
+          </svg>
+        <% } %>
+      </div>
+
+      <div class="card dash-panel">
+        <div class="section-label" style="margin-top:0;">Deals by Exit Strategy <span class="you-tag">(all-time)</span></div>
+        <% if (!hasAnyDeals) { %>
+          <div class="empty-state">No deals on the board yet.</div>
+        <% } else { %>
+          <svg class="chart-svg" viewBox="0 0 <%= exitStrategyChart.width %> <%= exitStrategyChart.height %>" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Deals by exit strategy, all-time">
+            <% exitStrategyChart.bars.forEach(function(b) { %>
+              <path d="<%= b.path %>" class="chart-bar">
+                <title><%= b.label %>: <%= b.valueLabel %></title>
+              </path>
+              <text x="<%= exitStrategyChart.leftPadding - 10 %>" y="<%= b.rowCenterY + 4 %>" class="chart-axis-label" text-anchor="end"><%= b.label %></text>
+              <text x="<%= b.valueX %>" y="<%= b.rowCenterY + 4 %>" class="chart-value-label" text-anchor="start"><%= b.valueLabel %></text>
+            <% }) %>
+          </svg>
+        <% } %>
+      </div>
+    </div>
+
     <% statuses.forEach(function(status) { %>
       <div class="page-title" style="font-size:18px; display:flex; align-items:center; gap:10px;">
         <%= status %>
@@ -88,6 +127,7 @@
                 <th>Sale Price</th>
                 <th>%</th>
                 <th>Est. Profit</th>
+                <th>Expected Closing</th>
                 <th>EMD</th>
                 <th>Added By</th>
                 <th>Status</th>
@@ -114,6 +154,7 @@
                   <td><%= money(d.sale_price) %></td>
                   <td><%= pct !== null ? pct + '%' : '-' %></td>
                   <td><%= money(d.estimated_profit) %></td>
+                  <td><%= d.expected_closing_date ? new Date(d.expected_closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-' %></td>
                   <td><%= d.emd_received ? 'Yes' : '-' %></td>
                   <td><%= d.created_by_name || '-' %></td>
                   <td>
