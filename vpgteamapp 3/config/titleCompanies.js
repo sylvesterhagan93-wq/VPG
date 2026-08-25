@@ -34,6 +34,13 @@ const TITLE_COMPANIES = [
     email: "scott@superiortitle.org",
     address: "1383 Dublin Rd. Columbus, OH 43215",
   },
+  {
+    name: "Pioneer Title Agency",
+    contactName: "Dina Shroth, Senior Escrow Officer",
+    phone: "480-368-1500 (O) / 866-910-8015 (Toll Free)",
+    email: "Dina.Shroth@ptaaz.com",
+    address: "14850 N Scottsdale Rd. Ste 160, Scottsdale, AZ 85254",
+  },
 ];
 
 module.exports = { TITLE_COMPANIES };
