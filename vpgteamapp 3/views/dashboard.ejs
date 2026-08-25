@@ -53,30 +53,22 @@
       </div>
 
       <div class="card dash-panel">
-        <div class="section-label" style="margin-top:0;">Leaderboard</div>
+        <div class="section-label" style="margin-top:0;">Acquisition vs Disposition</div>
         <div class="leaderboard-block">
-          <div class="leaderboard-title">Most Sent This Week</div>
-          <% if (sentLeaderboard.length === 0) { %>
-            <div class="empty-state">No agreements sent this week yet.</div>
-          <% } else { %>
-            <ol class="leaderboard-list">
-              <% sentLeaderboard.forEach(function(row) { %>
-                <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
-              <% }) %>
-            </ol>
-          <% } %>
+          <div class="leaderboard-title">Sent This Week</div>
+          <ol class="leaderboard-list">
+            <% sentLeaderboard.forEach(function(row) { %>
+              <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
+            <% }) %>
+          </ol>
         </div>
         <div class="leaderboard-block">
-          <div class="leaderboard-title">Most Signed This Month</div>
-          <% if (signedLeaderboard.length === 0) { %>
-            <div class="empty-state">No agreements signed this month yet.</div>
-          <% } else { %>
-            <ol class="leaderboard-list">
-              <% signedLeaderboard.forEach(function(row) { %>
-                <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
-              <% }) %>
-            </ol>
-          <% } %>
+          <div class="leaderboard-title">Signed This Month</div>
+          <ol class="leaderboard-list">
+            <% signedLeaderboard.forEach(function(row) { %>
+              <li><span><%= row.name %></span><span class="leaderboard-count"><%= row.count %></span></li>
+            <% }) %>
+          </ol>
         </div>
       </div>
 

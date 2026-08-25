@@ -64,6 +64,25 @@ async function reconcilePendingStatuses() {
   }
 }
 
+// Turns a { bucket: 'acquisition' | 'disposition', count }[] query result
+// into a fixed two-row, zero-filled, highest-first list for the dashboard's
+// Acquisition vs Disposition scoreboard - always shows both sides (even at
+// 0-0) rather than hiding whichever side has no activity yet, since the
+// point is to see the competition at a glance.
+const ACQ_VS_DISP_LABELS = {
+  acquisition: "Acquisition (Purchase + Novation)",
+  disposition: "Disposition (Assignment)",
+};
+function buildAcqVsDispBoard(rows) {
+  const counts = { acquisition: 0, disposition: 0 };
+  rows.forEach((r) => {
+    if (counts[r.bucket] !== undefined) counts[r.bucket] = Number(r.count);
+  });
+  return Object.keys(ACQ_VS_DISP_LABELS)
+    .map((key) => ({ name: ACQ_VS_DISP_LABELS[key], count: counts[key] }))
+    .sort((a, b) => b.count - a.count);
+}
+
 router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
@@ -97,28 +116,32 @@ router.get("/dashboard", async (req, res, next) => {
          ORDER BY announcements.created_at DESC
          LIMIT 5`
       ),
-      // Leaderboard: most agreements sent this (calendar) week.
+      // Acquisition vs Disposition: agreements sent this (calendar) week,
+      // bucketed by what the type actually represents in a wholesale deal -
+      // Purchase/Novation are how VPG acquires a property from a Seller,
+      // Assignment is how VPG disposes of that contract to an end buyer.
+      // Addendum is excluded - it's a modification to an existing Purchase
+      // Agreement, not its own acquisition/disposition event.
       db.query(
-        `SELECT users.name, COUNT(agreements.id) AS count
-         FROM users
-         JOIN agreements ON agreements.sent_by_user_id = users.id
-           AND agreements.created_at >= date_trunc('week', now())
-         GROUP BY users.id
-         HAVING COUNT(agreements.id) > 0
-         ORDER BY count DESC, users.name ASC
-         LIMIT 3`
+        `SELECT
+           CASE WHEN type IN ('purchase', 'novation') THEN 'acquisition' ELSE 'disposition' END AS bucket,
+           COUNT(*) AS count
+         FROM agreements
+         WHERE created_at >= date_trunc('week', now())
+           AND type IN ('purchase', 'novation', 'assignment')
+         GROUP BY bucket`
       ),
-      // Leaderboard: most agreements signed this calendar month.
+      // Same acquisition/disposition split, but for agreements signed this
+      // calendar month.
       db.query(
-        `SELECT users.name, COUNT(agreements.id) AS count
-         FROM users
-         JOIN agreements ON agreements.sent_by_user_id = users.id
-           AND agreements.status = 'signed'
-           AND to_char(agreements.signed_at, 'YYYY-MM') = to_char(now(), 'YYYY-MM')
-         GROUP BY users.id
-         HAVING COUNT(agreements.id) > 0
-         ORDER BY count DESC, users.name ASC
-         LIMIT 3`
+        `SELECT
+           CASE WHEN type IN ('purchase', 'novation') THEN 'acquisition' ELSE 'disposition' END AS bucket,
+           COUNT(*) AS count
+         FROM agreements
+         WHERE status = 'signed'
+           AND to_char(signed_at, 'YYYY-MM') = to_char(now(), 'YYYY-MM')
+           AND type IN ('purchase', 'novation', 'assignment')
+         GROUP BY bucket`
       ),
       // Upcoming closings: deals still open with an expected closing date.
       db.query(
@@ -139,8 +162,8 @@ router.get("/dashboard", async (req, res, next) => {
       recent: result.rows,
       clevelandWeather,
       announcements: announcementsResult.rows,
-      sentLeaderboard: sentLeaderboardResult.rows,
-      signedLeaderboard: signedLeaderboardResult.rows,
+      sentLeaderboard: buildAcqVsDispBoard(sentLeaderboardResult.rows),
+      signedLeaderboard: buildAcqVsDispBoard(signedLeaderboardResult.rows),
       upcomingClosings: upcomingClosingsResult.rows,
     });
   } catch (err) {
