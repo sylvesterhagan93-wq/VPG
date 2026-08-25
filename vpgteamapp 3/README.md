@@ -80,6 +80,13 @@ guessing the URL. The PDF itself is never stored in the app; the Download
 button fetches it fresh from HelloSign each time, so it's always the real,
 current, fully-executed document.
 
+You don't actually have to do the callback URL step above for status to
+work, though — every time anyone loads the dashboard, the app also checks
+HelloSign directly for any agreement still marked "sent" and updates it if
+it's actually fully signed. So status will show correctly either way; the
+callback URL just makes it happen the instant it's signed instead of the
+next time someone opens the dashboard.
+
 ## Deal Board
 
 There's a **Deal Board** tab in the top nav, built to match your "VPG
