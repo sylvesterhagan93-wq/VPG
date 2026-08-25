@@ -1,7 +1,12 @@
 const express = require("express");
 const db = require("../db/db");
 const { AGREEMENT_TYPES, getType, VPG_PRINCIPAL } = require("../config/agreementTypes");
-const { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus } = require("../services/hellosign");
+const {
+  sendAgreementForSignature,
+  downloadSignedPdf,
+  checkSignatureRequestStatus,
+  remindSignatureRequest,
+} = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { formatPropertyAddress } = require("../services/addressUtils");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
@@ -96,7 +101,7 @@ router.get("/dashboard", async (req, res, next) => {
   try {
     await reconcilePendingStatuses();
 
-    const [result, clevelandWeather, deletedAgreementResult] = await Promise.all([
+    const [result, clevelandWeather, deletedAgreementResult, resentAgreementResult] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
          FROM agreements
@@ -121,7 +126,23 @@ router.get("/dashboard", async (req, res, next) => {
             [req.query.deleted]
           )
         : Promise.resolve({ rows: [] }),
+      // Same idea, after a successful "Resend" (?resent=<id>) - names the
+      // agreement in the confirmation banner below.
+      req.query.resent
+        ? db.query(`SELECT id, type, property_address, party_summary FROM agreements WHERE id = $1`, [req.query.resent])
+        : Promise.resolve({ rows: [] }),
     ]);
+
+    let resendNotice = null;
+    if (req.query.resendError) {
+      resendNotice = { kind: "error", message: req.query.resendError };
+    } else if (resentAgreementResult.rows[0]) {
+      resendNotice = {
+        kind: "success",
+        agreement: resentAgreementResult.rows[0],
+        remindedCount: Number(req.query.remindedCount) || 1,
+      };
+    }
 
     res.render("dashboard", {
       userName: req.session.userName,
@@ -130,6 +151,7 @@ router.get("/dashboard", async (req, res, next) => {
       recent: result.rows,
       clevelandWeather,
       deletedAgreement: deletedAgreementResult.rows[0] || null,
+      resendNotice,
     });
   } catch (err) {
     next(err);
@@ -163,6 +185,40 @@ router.post("/agreements/:id/restore", requireAdmin, async (req, res, next) => {
     res.redirect("/dashboard");
   } catch (err) {
     next(err);
+  }
+});
+
+// Resends the HelloSign signature request for an agreement still awaiting
+// signatures - open to any team member (unlike delete, this doesn't remove
+// or change anything, it just nudges whoever hasn't signed yet in case the
+// original email was missed or landed in spam). Uses HelloSign's own
+// reminder endpoint (services/hellosign.js remindSignatureRequest) rather
+// than generating a new document or a new signature request.
+router.post("/agreements/:id/resend", async (req, res, next) => {
+  try {
+    const result = await db.query(`SELECT * FROM agreements WHERE id = $1`, [req.params.id]);
+    const agreement = result.rows[0];
+    if (!agreement) return res.status(404).send("Agreement not found.");
+
+    if (!isRealHelloSignRequest(agreement.hellosign_request_id)) {
+      return res.redirect(
+        `/dashboard?resendError=${encodeURIComponent(
+          "This agreement was sent in mock mode (no HelloSign API key configured), so there's no real signature request to resend."
+        )}`
+      );
+    }
+    if (agreement.status !== "sent") {
+      return res.redirect(
+        `/dashboard?resendError=${encodeURIComponent(
+          `This agreement is marked "${agreement.status}", so there's no pending signature request to resend.`
+        )}`
+      );
+    }
+
+    const { remindedCount } = await remindSignatureRequest(agreement.hellosign_request_id);
+    res.redirect(`/dashboard?resent=${agreement.id}&remindedCount=${remindedCount}`);
+  } catch (err) {
+    res.redirect(`/dashboard?resendError=${encodeURIComponent(err.message)}`);
   }
 });
 

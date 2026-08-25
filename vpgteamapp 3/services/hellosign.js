@@ -147,4 +147,66 @@ async function checkSignatureRequestStatus(requestId) {
   return "sent";
 }
 
-module.exports = { sendAgreementForSignature, downloadSignedPdf, checkSignatureRequestStatus };
+/**
+ * Nudges whoever hasn't signed yet on an existing signature request, for
+ * the dashboard's "Resend" button on a Recent Activity row - useful when a
+ * signer missed the original email or it landed in spam. This doesn't
+ * generate a new document or a new signature request; it uses HelloSign's
+ * own reminder endpoint (POST /signature_request/remind/:id, one call per
+ * pending signer's email - the API reminds one signer at a time).
+ *
+ * Throws with a message safe to show the sender directly if: mock mode
+ * (no API key), the request can't be found, everyone has already signed
+ * or declined, or HelloSign itself rejects the reminder (e.g. its "no more
+ * than one reminder per hour" cooldown).
+ */
+async function remindSignatureRequest(requestId) {
+  const apiKey = process.env.HELLOSIGN_API_KEY;
+  if (!apiKey) {
+    throw new Error("HELLOSIGN_API_KEY is not configured, so resending isn't available in mock mode.");
+  }
+
+  let sr;
+  try {
+    const statusResponse = await axios.get(`${HELLOSIGN_API_BASE}/signature_request/${requestId}`, {
+      auth: { username: apiKey, password: "" },
+    });
+    sr = statusResponse.data?.signature_request;
+  } catch (err) {
+    throw new Error(
+      err.response?.data?.error?.error_msg || err.message || "Could not look up this signature request on HelloSign."
+    );
+  }
+  if (!sr) throw new Error("Could not find this signature request on HelloSign.");
+
+  const pendingSigners = (sr.signatures || []).filter(
+    (s) => s.status_code !== "signed" && s.status_code !== "declined"
+  );
+  if (pendingSigners.length === 0) {
+    throw new Error("Everyone has already signed (or declined) - there's no one left to remind.");
+  }
+
+  for (const signer of pendingSigners) {
+    try {
+      const form = new FormData();
+      form.append("email_address", signer.signer_email_address);
+      await axios.post(`${HELLOSIGN_API_BASE}/signature_request/remind/${requestId}`, form, {
+        headers: form.getHeaders(),
+        auth: { username: apiKey, password: "" },
+      });
+    } catch (err) {
+      throw new Error(
+        err.response?.data?.error?.error_msg || err.message || "Could not send the reminder."
+      );
+    }
+  }
+
+  return { remindedCount: pendingSigners.length };
+}
+
+module.exports = {
+  sendAgreementForSignature,
+  downloadSignedPdf,
+  checkSignatureRequestStatus,
+  remindSignatureRequest,
+};

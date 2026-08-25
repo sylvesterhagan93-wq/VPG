@@ -55,6 +55,16 @@
       </div>
     <% } %>
 
+    <% if (resendNotice) { %>
+      <% if (resendNotice.kind === 'success') { %>
+        <div class="alert info">
+          Sent a reminder for the <%= resendNotice.agreement.type.charAt(0).toUpperCase() + resendNotice.agreement.type.slice(1) %> agreement<% if (resendNotice.agreement.property_address) { %> for <strong><%= resendNotice.agreement.property_address %></strong><% } else if (resendNotice.agreement.party_summary) { %> for <strong><%= resendNotice.agreement.party_summary %></strong><% } %> to <%= resendNotice.remindedCount %> pending signer<%= resendNotice.remindedCount === 1 ? '' : 's' %>.
+        </div>
+      <% } else { %>
+        <div class="alert error"><%= resendNotice.message %></div>
+      <% } %>
+    <% } %>
+
     <div class="card">
       <% if (recent.length === 0) { %>
         <div class="empty-state">No agreements sent yet. Pick a document type above to get started.</div>
@@ -83,6 +93,12 @@
                 <td style="white-space:nowrap;">
                   <% if (a.status === 'signed') { %>
                     <a class="btn-tiny download-link" href="/agreements/<%= a.id %>/download">Download</a>
+                  <% } %>
+                  <% if (a.status === 'sent' && a.hellosign_request_id && a.hellosign_request_id.indexOf('mock-') !== 0) { %>
+                    <form method="POST" action="/agreements/<%= a.id %>/resend" style="display:inline;"
+                          onsubmit="return confirm('Resend the signature request reminder to whoever hasn\'t signed yet?');">
+                      <button type="submit" class="btn-tiny">Resend</button>
+                    </form>
                   <% } %>
                   <% if (isAdmin) { %>
                     <form method="POST" action="/agreements/<%= a.id %>/delete" style="display:inline;"
