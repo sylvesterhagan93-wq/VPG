@@ -85,23 +85,13 @@ function buildAcqVsDispBoard(rows) {
 
 router.get("/dashboard", async (req, res, next) => {
   try {
-    await reconcilePendingStatuses();
-
     const [
-      result,
       clevelandWeather,
       announcementsResult,
       sentLeaderboardResult,
       signedLeaderboardResult,
       upcomingClosingsResult,
     ] = await Promise.all([
-      db.query(
-        `SELECT agreements.*, users.name AS sent_by_name
-         FROM agreements
-         JOIN users ON users.id = agreements.sent_by_user_id
-         ORDER BY agreements.created_at DESC
-         LIMIT 25`
-      ),
       // Best-effort - a slow/unreachable weather API should never stall or
       // break the dashboard, so any failure here just falls back to null.
       getClevelandWeather().catch((err) => {
@@ -158,13 +148,38 @@ router.get("/dashboard", async (req, res, next) => {
     res.render("dashboard", {
       userName: req.session.userName,
       isAdmin: req.session.isAdmin,
-      types: Object.values(AGREEMENT_TYPES),
-      recent: result.rows,
       clevelandWeather,
       announcements: announcementsResult.rows,
       sentLeaderboard: buildAcqVsDispBoard(sentLeaderboardResult.rows),
       signedLeaderboard: buildAcqVsDispBoard(signedLeaderboardResult.rows),
       upcomingClosings: upcomingClosingsResult.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The "Send an Agreement" tab - pick a document type to fill out and send,
+// plus the recent-activity history of everything already sent. Split out
+// of the dashboard into its own page so the dashboard stays a quick-glance
+// overview and this stays the dedicated place to send/track agreements.
+router.get("/agreements", async (req, res, next) => {
+  try {
+    await reconcilePendingStatuses();
+
+    const result = await db.query(
+      `SELECT agreements.*, users.name AS sent_by_name
+       FROM agreements
+       JOIN users ON users.id = agreements.sent_by_user_id
+       ORDER BY agreements.created_at DESC
+       LIMIT 25`
+    );
+
+    res.render("agreements", {
+      userName: req.session.userName,
+      isAdmin: req.session.isAdmin,
+      types: Object.values(AGREEMENT_TYPES),
+      recent: result.rows,
     });
   } catch (err) {
     next(err);

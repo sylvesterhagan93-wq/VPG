@@ -15,7 +15,7 @@
     <% if (result.mode === 'mock') { %>
       <div class="alert info">
         <strong>Mock mode:</strong> No HelloSign API key is configured, so this was not actually sent for signature.
-        The agreement document was generated successfully and this send was logged on the dashboard as
+        The agreement document was generated successfully and this send was logged as
         <span class="badge mock_sent">mock sent</span>. Add your HELLOSIGN_API_KEY to send for real.
       </div>
     <% } else { %>
@@ -26,8 +26,8 @@
     <% } %>
 
     <div class="card">
-      <p>You can track its status on the <a href="/dashboard">dashboard</a>.</p>
-      <a href="/dashboard" class="btn">Back to Dashboard</a>
+      <p>You can track its status under <a href="/agreements">Send Agreement</a>.</p>
+      <a href="/agreements" class="btn">Back to Agreements</a>
     </div>
   </div>
 </body>
