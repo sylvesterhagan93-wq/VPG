@@ -48,6 +48,13 @@ const TITLE_COMPANIES = [
     email: "nancy@closedtitle.com",
     address: "",
   },
+  {
+    name: "Kearney Law PLLC Main Office",
+    contactName: "",
+    phone: "813-507-5376 / 813-848-4857",
+    email: "title@kearneylaw.com",
+    address: "412 E. Madison St. Suite 800-B, Tampa, FL 33602",
+  },
 ];
 
 module.exports = { TITLE_COMPANIES };
