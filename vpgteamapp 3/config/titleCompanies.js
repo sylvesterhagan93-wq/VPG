@@ -41,6 +41,13 @@ const TITLE_COMPANIES = [
     email: "Dina.Shroth@ptaaz.com",
     address: "14850 N Scottsdale Rd. Ste 160, Scottsdale, AZ 85254",
   },
+  {
+    name: "CLOSED Title National",
+    contactName: "Nancy Fitzgibbons, Escrow Officer",
+    phone: "941-867-7680",
+    email: "nancy@closedtitle.com",
+    address: "",
+  },
 ];
 
 module.exports = { TITLE_COMPANIES };
