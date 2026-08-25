@@ -83,21 +83,56 @@ function buildAcqVsDispBoard(rows) {
     .sort((a, b) => b.count - a.count);
 }
 
+// The front page / dashboard - pick a document type to fill out and send,
+// plus the recent-activity history of everything already sent, plus the
+// Cleveland weather widget. This was briefly split into its own "Send
+// Agreement" tab, but moved back here so the front page is the send/track
+// screen the team actually lands on and uses most; the team-engagement
+// widgets (announcements, Acquisition vs Disposition, upcoming closings)
+// now live on their own "Updates" tab instead (see GET /updates below).
 router.get("/dashboard", async (req, res, next) => {
   try {
-    const [
-      clevelandWeather,
-      announcementsResult,
-      sentLeaderboardResult,
-      signedLeaderboardResult,
-      upcomingClosingsResult,
-    ] = await Promise.all([
+    await reconcilePendingStatuses();
+
+    const [result, clevelandWeather] = await Promise.all([
+      db.query(
+        `SELECT agreements.*, users.name AS sent_by_name
+         FROM agreements
+         JOIN users ON users.id = agreements.sent_by_user_id
+         ORDER BY agreements.created_at DESC
+         LIMIT 25`
+      ),
       // Best-effort - a slow/unreachable weather API should never stall or
       // break the dashboard, so any failure here just falls back to null.
       getClevelandWeather().catch((err) => {
         console.error("Could not fetch Cleveland weather:", err.message);
         return null;
       }),
+    ]);
+
+    res.render("dashboard", {
+      userName: req.session.userName,
+      isAdmin: req.session.isAdmin,
+      types: Object.values(AGREEMENT_TYPES),
+      recent: result.rows,
+      clevelandWeather,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The "Updates" tab - announcements, the Acquisition vs Disposition
+// scoreboard, and upcoming closings. Split out of the dashboard so the
+// front page can stay dedicated to sending/tracking agreements.
+router.get("/updates", async (req, res, next) => {
+  try {
+    const [
+      announcementsResult,
+      sentLeaderboardResult,
+      signedLeaderboardResult,
+      upcomingClosingsResult,
+    ] = await Promise.all([
       // Latest announcements, most recent first.
       db.query(
         `SELECT announcements.id, announcements.body, announcements.created_at, users.name AS author_name
@@ -145,41 +180,13 @@ router.get("/dashboard", async (req, res, next) => {
       ),
     ]);
 
-    res.render("dashboard", {
+    res.render("updates", {
       userName: req.session.userName,
       isAdmin: req.session.isAdmin,
-      clevelandWeather,
       announcements: announcementsResult.rows,
       sentLeaderboard: buildAcqVsDispBoard(sentLeaderboardResult.rows),
       signedLeaderboard: buildAcqVsDispBoard(signedLeaderboardResult.rows),
       upcomingClosings: upcomingClosingsResult.rows,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// The "Send an Agreement" tab - pick a document type to fill out and send,
-// plus the recent-activity history of everything already sent. Split out
-// of the dashboard into its own page so the dashboard stays a quick-glance
-// overview and this stays the dedicated place to send/track agreements.
-router.get("/agreements", async (req, res, next) => {
-  try {
-    await reconcilePendingStatuses();
-
-    const result = await db.query(
-      `SELECT agreements.*, users.name AS sent_by_name
-       FROM agreements
-       JOIN users ON users.id = agreements.sent_by_user_id
-       ORDER BY agreements.created_at DESC
-       LIMIT 25`
-    );
-
-    res.render("agreements", {
-      userName: req.session.userName,
-      isAdmin: req.session.isAdmin,
-      types: Object.values(AGREEMENT_TYPES),
-      recent: result.rows,
     });
   } catch (err) {
     next(err);
