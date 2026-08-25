@@ -1,4 +1,13 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+// Render's network doesn't route outbound IPv6, but Node's DNS resolver
+// will still hand back an IPv6 address for smtp.gmail.com first on some
+// hosts, which fails immediately with ECONNREFUSED/ENETUNREACH before ever
+// trying the IPv4 address. Forcing IPv4-first resolution avoids that.
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 // Offer Letters are sent as a plain email (not a HelloSign signature
 // request) from Sylvester's own Gmail account, so sellers see it come from
@@ -22,6 +31,11 @@ function getTransporter() {
   cachedTransporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user, pass },
+    // Belt-and-suspenders alongside the dns.setDefaultResultOrder() above:
+    // force the actual socket connection to IPv4 so this can't regress if
+    // something upstream (nodemailer, Node itself) ever changes its lookup
+    // behavior again.
+    family: 4,
   });
   return cachedTransporter;
 }
