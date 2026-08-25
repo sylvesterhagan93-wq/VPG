@@ -35,12 +35,19 @@ async function sendAgreementForSignature({ type, fields, signers, sentByName }) 
     };
   }
 
+  // What signers see as the request title/email subject: the property address
+  // followed by "Agreement" (e.g. "123 Main Street, Cleveland, OH 44112 Agreement"),
+  // rather than leading with the internal document type name.
+  const displayName = fields.property_address
+    ? `${fields.property_address} Agreement`
+    : typeDef.label;
+
   const form = new FormData();
-  form.append("title", `${typeDef.label}${fields.property_address ? " - " + fields.property_address : ""}`);
-  form.append("subject", `${typeDef.label} for signature - VPG`);
+  form.append("title", displayName);
+  form.append("subject", displayName);
   form.append(
     "message",
-    `Please review and sign this ${typeDef.label.toLowerCase()}. Sent via VPGteamapp by ${sentByName || "the VPG team"}.`
+    `Please review and sign this agreement for ${fields.property_address || "the property"}. Sent via VPGteamapp by ${sentByName || "the VPG team"}.`
   );
 
   typeDef.signers.forEach((s, i) => {
