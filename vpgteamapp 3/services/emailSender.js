@@ -1,10 +1,28 @@
 const nodemailer = require("nodemailer");
 const dns = require("dns");
 
-// Render's network doesn't route outbound IPv6, but Node's DNS resolver
-// will still hand back an IPv6 address for smtp.gmail.com first on some
-// hosts, which fails immediately with ECONNREFUSED/ENETUNREACH before ever
-// trying the IPv4 address. Forcing IPv4-first resolution avoids that.
+// Render's network doesn't route outbound IPv6 at all, but smtp.gmail.com
+// has both A (IPv4) and AAAA (IPv6) records, and Node kept picking an IPv6
+// address and failing instantly with ENETUNREACH. dns.setDefaultResultOrder
+// alone did NOT fix this in practice - nodemailer/Node's own connection
+// code calls dns.lookup() with its own explicit options (e.g. verbatim, or
+// family) that override the process-wide default order. The only fix that
+// actually works is monkey-patching dns.lookup() itself so it ALWAYS
+// resolves IPv4 only, no matter what options any caller (nodemailer, Node
+// internals, etc.) passes in.
+const originalDnsLookup = dns.lookup;
+dns.lookup = function forcedIPv4Lookup(hostname, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = {};
+  } else if (typeof options === "number") {
+    // dns.lookup(hostname, family, callback) shorthand form
+    options = { family: options };
+  } else {
+    options = options || {};
+  }
+  return originalDnsLookup.call(dns, hostname, { ...options, family: 4, all: false }, callback);
+};
 if (typeof dns.setDefaultResultOrder === "function") {
   dns.setDefaultResultOrder("ipv4first");
 }
