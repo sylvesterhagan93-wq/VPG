@@ -9,6 +9,21 @@
 const BUYER_ENTITY_NAME = "Venture Property Group, LLC";
 const ASSIGNOR_TITLE = "Managing Member";
 
+// Every deal can use a different title/escrow company, so this same set of
+// fields is reused (with a shared "Escrow / Title Company" form section) on
+// Purchase, Novation, and Assignment agreements - only the company name is
+// required, the rest just make the PDF and signers' contact info more
+// complete when you have it.
+function escrowFields(defaults = {}) {
+  return [
+    { key: "escrow_company", label: "Escrow / Title Company Name", type: "text", required: true, section: "Escrow / Title Company", default: defaults.escrow_company },
+    { key: "escrow_contact_name", label: "Escrow Contact Person", type: "text", section: "Escrow / Title Company", default: defaults.escrow_contact_name },
+    { key: "escrow_phone", label: "Escrow Phone Number", type: "text", section: "Escrow / Title Company", default: defaults.escrow_phone },
+    { key: "escrow_email", label: "Escrow Email", type: "text", section: "Escrow / Title Company", default: defaults.escrow_email },
+    { key: "escrow_address", label: "Escrow Company Address", type: "text", section: "Escrow / Title Company", default: defaults.escrow_address },
+  ];
+}
+
 const AGREEMENT_TYPES = {
   purchase: {
     key: "purchase",
@@ -24,7 +39,7 @@ const AGREEMENT_TYPES = {
       { key: "county_line", label: "County / State (e.g., Hillsborough County, FL)", type: "text", required: true },
       { key: "purchase_price", label: "Purchase Price ($)", type: "text", required: true },
       { key: "deposit_amount", label: "Non-Refundable Deposit Held in Escrow ($)", type: "text", required: true },
-      { key: "escrow_company", label: "Escrow / Title Company", type: "text", required: true },
+      ...escrowFields(),
       { key: "closing_days", label: "Closing (business days from Effective Date)", type: "text", required: true },
       { key: "inspection_days", label: "Inspection Period (business days from Effective Date)", type: "text", required: true },
       { key: "additional_terms", label: "Additional Terms", type: "textarea" },
@@ -47,6 +62,13 @@ const AGREEMENT_TYPES = {
       { key: "county_name", label: "County (Ohio)", type: "text", required: true },
       { key: "purchase_price", label: "Purchase Price ($)", type: "text", required: true },
       { key: "deposit_amount", label: "Deposit Held in Escrow ($)", type: "text", required: true },
+      ...escrowFields({
+        escrow_company: "American Title Solutions",
+        escrow_contact_name: "Stephen Carter",
+        escrow_phone: "330-835-4430",
+        escrow_email: "Stephen@americantitlesolutions.com",
+        escrow_address: "275 Springside Drive, Suite 100, Akron, Ohio 44333",
+      }),
       { key: "closing_days", label: "Closing (business days from Effective Date)", type: "text", required: true },
       { key: "inspection_days", label: "Inspection Period (business days from Effective Date)", type: "text", required: true },
       { key: "governing_state", label: "Governing Law State", type: "text", required: true, default: "Ohio" },
@@ -73,7 +95,7 @@ const AGREEMENT_TYPES = {
       { key: "settlement_date", label: "Settlement / Closing Date", type: "date", required: true },
       { key: "assignee_entity_name", label: "Assignee Entity Name", type: "text", required: true },
       { key: "assignee_title", label: "Assignee Signer Title (e.g., Member, Manager)", type: "text" },
-      { key: "escrow_contact", label: "Escrow Email & Phone Number", type: "text", required: true },
+      ...escrowFields(),
     ],
   },
 

@@ -58,6 +58,23 @@ function formatLongDate(value) {
   return `${ordinalDay(d)} day of ${month}, ${year}`;
 }
 
+/**
+ * Renders the escrow/title company contact info as one readable line, e.g.
+ * "ABC Title Co., Jane Smith, (555) 123-4567, jane@abctitle.com, 100 Main
+ * St, Suite 2, Tampa, FL 33602." Only the fields that were actually filled
+ * in are included.
+ */
+function escrowLine(fields) {
+  const parts = [
+    fields.escrow_company,
+    fields.escrow_contact_name,
+    fields.escrow_phone,
+    fields.escrow_email,
+    fields.escrow_address,
+  ].filter((v) => v && String(v).trim());
+  return parts.length ? parts.join(", ") : "____________________";
+}
+
 function money(v) {
   if (!v) return "____________";
   let trimmed = String(v).trim();
@@ -114,7 +131,7 @@ function generatePurchaseAgreementPdf({ typeDef, fields, signers }) {
 
     heading("3. ESCROW.");
     body(
-      `The Deposit shall be made payable, delivered to and held by the Escrow company: ${fields.escrow_company || "____________________"}.`
+      `The Deposit shall be made payable, delivered to and held by the Escrow company: ${escrowLine(fields)}.`
     );
 
     heading("4. CLOSING.");
@@ -317,7 +334,7 @@ function generateAssignmentAgreementPdf({ typeDef, fields, signers }) {
     );
 
     body(`Signed and delivered as of ${formatLongDate(fields.agreement_date)}.`);
-    body(`Escrow email and phone number: ${fields.escrow_contact || "____________________"}`);
+    body(`Escrow / Title Company: ${escrowLine(fields)}`);
 
     doc.moveDown(1);
     doc.font("Helvetica-Bold").fontSize(11).text("By");
@@ -407,8 +424,7 @@ function generateNovationAgreementPdf({ typeDef, fields, signers }) {
 
     heading("ESCROW.");
     body(
-      "The Deposit shall be made payable, delivered to and held by the Escrow Agent: American Title Solutions, " +
-      "Stephen Carter, 330-835-4430, Stephen@americantitlesolutions.com, 275 Springside Drive, Suite 100, Akron, Ohio 44333."
+      `The Deposit shall be made payable, delivered to and held by the Escrow Agent: ${escrowLine(fields)}.`
     );
 
     heading("CLOSING.");

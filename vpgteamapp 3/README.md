@@ -101,28 +101,35 @@ Everything about each document type — its signer roles, its form fields, and
 `config/agreementTypes.js` and `services/pdfGenerator.js`. Current fields
 per type:
 
+Purchase, Novation, and Assignment each have their own **"Escrow / Title
+Company"** section on the form, since you use a different title company deal
+to deal — company name (required), contact person, phone, email, and
+address. Fill in whatever you have; anything left blank just prints as a
+blank line in the PDF.
+
 - **Purchase Agreement** (matches your real template) — Seller(s); a Buyer
   Representative who signs on behalf of Venture Property Group, LLC
   (always the fixed Buyer entity); agreement date; property address;
   county/state; purchase price; non-refundable deposit; escrow/title
-  company; closing timeline; inspection period; additional terms.
+  company section; closing timeline; inspection period; additional terms.
 - **Assignment Agreement** (matches your real template) — an Assignor
   Representative signing on behalf of Venture Property Group, LLC (always
   the fixed Assignor — VPG assigns its Buyer position from the Purchase
   Agreement to an end buyer); the Assignee (entity name, signer, title);
   agreement date; property address; original seller name and Purchase
   Agreement date; assignment consideration; assignment earnest money
-  deposit; settlement date; escrow contact.
+  deposit; settlement date; escrow/title company section.
 - **Novation Agreement** (matches your real template) — this one sends as
   a single 3-in-1 packet, exactly like your source document: the Ohio
-  wholesale Purchase Agreement (with its Assignability & Novation clause
-  and a fixed escrow agent, American Title Solutions), the Novation and
-  Indemnification Agreement, and the Authorization to Sign / power of
-  attorney — all signed by the same Seller and Buyer Representative.
-  Fields: Seller(s); Buyer Representative / Managing Member; agreement
-  date; property address; county (defaults state to Ohio, editable);
-  purchase price; escrow deposit; closing/inspection timelines; governing
-  law state; seller net proceeds; additional terms.
+  wholesale Purchase Agreement (with its Assignability & Novation clause),
+  the Novation and Indemnification Agreement, and the Authorization to
+  Sign / power of attorney — all signed by the same Seller and Buyer
+  Representative. Fields: Seller(s); Buyer Representative / Managing
+  Member; agreement date; property address; county (defaults state to
+  Ohio, editable); purchase price; escrow deposit; escrow/title company
+  section (pre-filled with American Title Solutions' info since that's
+  who you've used before, but fully editable per deal); closing/inspection
+  timelines; governing law state; seller net proceeds; additional terms.
 - **Addendum** (placeholder, not yet matched to a real document) — Party
   1, Party 2, related agreement reference, property address, effective
   date, details of changes.
