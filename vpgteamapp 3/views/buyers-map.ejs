@@ -24,7 +24,7 @@
 
     <div class="map-legend">
       <span class="map-legend-item"><span class="map-legend-swatch has-data"></span> State has a buyer and/or a deal</span>
-      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> UCB / Closed deal (hover for the exact purchase address, and the buyer when known)</span>
+      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> UCB / Closed deal (hover for a quick look, click a star for the buyer(s) and exact purchase address in that city)</span>
     </div>
 
     <div class="map-grid">
@@ -131,24 +131,69 @@
       var sidePanel = document.getElementById('side-panel-content');
       var resetBtn = document.getElementById('map-reset-btn');
 
-      // Simple 5-point star, drawn once per deal marker and positioned with
-      // a <g transform="translate(x,y)"> so it lands in the same projected
-      // pixel space as the state paths (see config/usCityCoords.js).
+      // Simple 5-point star, drawn once per CITY (not once per deal) and
+      // positioned with a <g transform="translate(x,y)"> so it lands in the
+      // same projected pixel space as the state paths (see
+      // config/usCityCoords.js). Multiple deals in the same city share one
+      // city-center coordinate (e.g. Toledo, OH currently has 3 UCB/Closed
+      // deals from 2 different buyers) - drawing one star per deal would
+      // stack identical stars invisibly on top of each other, so
+      // DATA.dealMarkers is grouped by its projected x,y here and each
+      // group's full deal list (with buyer names) is what a click/hover
+      // on that one star actually shows.
       var STAR_D = "M0,-9 L2.6,-2.8 L9.5,-2.8 L3.9,1.1 L6,8 L0,3.6 L-6,8 L-3.9,1.1 L-9.5,-2.8 L-2.6,-2.8 Z";
       var SVG_NS = 'http://www.w3.org/2000/svg';
+
+      var cityGroups = {};
+      var cityGroupOrder = [];
       DATA.dealMarkers.forEach(function (m) {
+        var key = m.x + ',' + m.y;
+        if (!cityGroups[key]) {
+          cityGroups[key] = { x: m.x, y: m.y, state: m.state, city: m.city, deals: [] };
+          cityGroupOrder.push(key);
+        }
+        cityGroups[key].deals.push({ id: m.id, address: m.address, status: m.status, buyerName: m.buyerName });
+      });
+
+      cityGroupOrder.forEach(function (key) {
+        var group = cityGroups[key];
         var g = document.createElementNS(SVG_NS, 'g');
         g.setAttribute('class', 'deal-star');
-        g.setAttribute('transform', 'translate(' + m.x + ',' + m.y + ')');
-        g.setAttribute('data-state', m.state);
+        g.setAttribute('transform', 'translate(' + group.x + ',' + group.y + ')');
+        g.setAttribute('data-state', group.state);
+        g.setAttribute('tabindex', '0');
+        g.setAttribute('role', 'button');
+        g.setAttribute('aria-label', 'Purchases in ' + group.city + ', ' + group.state);
         var path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('d', STAR_D);
         var title = document.createElementNS(SVG_NS, 'title');
-        title.textContent = (m.buyerName ? m.buyerName + ' purchased ' : '') + m.address + ' (' + m.status + ')';
+        title.textContent = starTooltipText(group);
         g.appendChild(path);
         g.appendChild(title);
+        g.addEventListener('click', function (e) {
+          e.stopPropagation();
+          selectCity(group);
+        });
+        g.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            selectCity(group);
+          }
+        });
         starsGroup.appendChild(g);
       });
+
+      function starTooltipText(group) {
+        if (group.deals.length === 1) {
+          var d = group.deals[0];
+          return (d.buyerName ? d.buyerName + ' purchased ' : '') + d.address + ' (' + d.status + ')';
+        }
+        return group.deals.length + ' purchases in ' + group.city + ', ' + group.state + ' - click for details:\n' +
+          group.deals.map(function (d) {
+            return '• ' + (d.buyerName ? d.buyerName + ' - ' : '') + d.address + ' (' + d.status + ')';
+          }).join('\n');
+      }
 
       function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -207,17 +252,63 @@
         sidePanel.innerHTML = html;
       }
 
-      function selectState(abbr, pathEl) {
-        paths.forEach(function (p) { p.classList.remove('selected'); });
-        pathEl.classList.add('selected');
+      function zoomToPath(pathEl) {
         var bbox = (pathEl.getAttribute('data-bbox') || '').split(',').map(Number);
         if (bbox.length === 4) {
           var padX = bbox[2] * 0.35 + 10;
           var padY = bbox[3] * 0.35 + 10;
           animateViewBox([bbox[0] - padX, bbox[1] - padY, bbox[2] + padX * 2, bbox[3] + padY * 2], 500);
         }
+      }
+
+      function pathForState(abbr) {
+        return paths.filter(function (p) { return p.getAttribute('data-state') === abbr; })[0] || null;
+      }
+
+      function selectState(abbr, pathEl) {
+        paths.forEach(function (p) { p.classList.remove('selected'); });
+        pathEl.classList.add('selected');
+        zoomToPath(pathEl);
         renderPanel(abbr);
         resetBtn.style.display = 'inline-block';
+      }
+
+      // A city's star sits on top of its state, so clicking it also zooms
+      // to (and highlights) that state for context - but the side panel
+      // shows ONLY what was actually purchased in that specific city
+      // (every buyer/deal at that one star), not the whole state's list.
+      function selectCity(group) {
+        var pathEl = pathForState(group.state);
+        paths.forEach(function (p) { p.classList.remove('selected'); });
+        if (pathEl) {
+          pathEl.classList.add('selected');
+          zoomToPath(pathEl);
+        }
+        renderCityPanel(group);
+        resetBtn.style.display = 'inline-block';
+      }
+
+      function renderCityPanel(group) {
+        var stateName = STATE_NAMES[group.state] || group.state;
+        var html = '<div class="side-panel-back"><a href="#" data-back-state="' + escapeHtml(group.state) + '">&larr; All of ' + escapeHtml(stateName) + '</a></div>';
+        html += '<div class="side-panel-state-name">' + escapeHtml(group.city) + ', ' + escapeHtml(group.state) + '</div>';
+        html += '<div class="section-label" style="margin-top:16px;">Purchased Here (' + group.deals.length + ')</div>';
+        group.deals.forEach(function (d) {
+          html += '<div class="deal-chip"><span class="badge ' + d.status + '">' + d.status + '</span> ' +
+            escapeHtml(d.address);
+          if (d.buyerName) html += '<div class="deal-chip-buyer">Purchased by ' + escapeHtml(d.buyerName) + '</div>';
+          html += '</div>';
+        });
+        sidePanel.innerHTML = html;
+        var backLink = sidePanel.querySelector('[data-back-state]');
+        if (backLink) {
+          backLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            var abbr = backLink.getAttribute('data-back-state');
+            var statePathEl = pathForState(abbr);
+            if (statePathEl) selectState(abbr, statePathEl);
+          });
+        }
       }
 
       paths.forEach(function (p) {

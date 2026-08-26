@@ -987,7 +987,14 @@ select.badge {
   fill: #f2b705;
   stroke: var(--navy);
   stroke-width: 0.6;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.deal-star:hover,
+.deal-star:focus-visible {
+  fill: #ffce33;
+  stroke-width: 1.1;
+  outline: none;
 }
 
 .side-panel-card {
@@ -999,6 +1006,21 @@ select.badge {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.side-panel-back {
+  margin-bottom: 10px;
+}
+
+.side-panel-back a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  text-decoration: none;
+}
+
+.side-panel-back a:hover {
+  text-decoration: underline;
 }
 
 .side-panel-state-name {
