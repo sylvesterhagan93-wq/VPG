@@ -1021,6 +1021,12 @@ select.badge {
   margin-top: 2px;
 }
 
+.deal-chip-buyer {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .state-checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

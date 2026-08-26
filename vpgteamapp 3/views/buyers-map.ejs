@@ -11,7 +11,7 @@
 
   <div class="container map-container">
     <div class="page-title">Buyers Map</div>
-    <div class="page-subtitle">Click a state to see which buyers target it and which UCB/Closed deals we have there.</div>
+    <div class="page-subtitle">Click a state to see which buyers target it, and exactly where each one has purchased - street, city, state, and ZIP.</div>
 
     <% if (isAdmin && deletedBuyer) { %>
       <div class="alert info" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -24,7 +24,7 @@
 
     <div class="map-legend">
       <span class="map-legend-item"><span class="map-legend-swatch has-data"></span> State has a buyer and/or a deal</span>
-      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> UCB / Closed deal</span>
+      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> UCB / Closed deal (hover for the exact purchase address, and the buyer when known)</span>
     </div>
 
     <div class="map-grid">
@@ -73,6 +73,7 @@
               <th>Name</th>
               <th>Contact</th>
               <th>Target States</th>
+              <th>Purchased</th>
               <th>Notes</th>
               <th></th>
             </tr>
@@ -91,6 +92,14 @@
                     <span class="state-tag"><%= abbr %></span>
                   <% }) %>
                   <% if (!b.target_states || b.target_states.length === 0) { %>-<% } %>
+                </td>
+                <td class="buyer-notes-cell">
+                  <% var purchases = purchasesByBuyer[b.id] || []; %>
+                  <% if (purchases.length === 0) { %>-<% } else { %>
+                    <% purchases.forEach(function(p) { %>
+                      <div><span class="badge <%= p.status %>"><%= p.status %></span> <%= p.address %></div>
+                    <% }) %>
+                  <% } %>
                 </td>
                 <td class="buyer-notes-cell"><%= b.notes || '-' %></td>
                 <td style="white-space:nowrap;">
@@ -135,7 +144,7 @@
         var path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('d', STAR_D);
         var title = document.createElementNS(SVG_NS, 'title');
-        title.textContent = m.address + (m.city ? ', ' + m.city : '') + ' - ' + m.status;
+        title.textContent = (m.buyerName ? m.buyerName + ' purchased ' : '') + m.address + ' (' + m.status + ')';
         g.appendChild(path);
         g.appendChild(title);
         starsGroup.appendChild(g);
@@ -190,7 +199,9 @@
         } else {
           bucket.deals.forEach(function (d) {
             html += '<div class="deal-chip"><span class="badge ' + d.status + '">' + d.status + '</span> ' +
-              escapeHtml(d.address) + (d.city ? ', ' + escapeHtml(d.city) : '') + '</div>';
+              escapeHtml(d.address);
+            if (d.buyerName) html += '<div class="deal-chip-buyer">Purchased by ' + escapeHtml(d.buyerName) + '</div>';
+            html += '</div>';
           });
         }
         sidePanel.innerHTML = html;

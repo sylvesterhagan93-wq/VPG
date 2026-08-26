@@ -42,6 +42,10 @@ function normalizeTargetStates(raw) {
 // assigned/sold transaction), not Active/prospecting deals still being
 // worked - matches how services/buyerAlerts.js decides when to fire an
 // alert, so the map and the alerts agree on what counts as "a deal."
+// When a deal has a known buyer (deals.buyer_id), that buyer's exact
+// purchase location - street, city, state, and ZIP, since that's all one
+// address string on the deals table - shows on that deal's star marker and
+// in the side panel, not just a state-level "this buyer targets Ohio."
 router.get("/buyers-map", async (req, res, next) => {
   try {
     const [buyersResult, dealsResult] = await Promise.all([
@@ -49,10 +53,12 @@ router.get("/buyers-map", async (req, res, next) => {
         `SELECT * FROM buyers WHERE deleted_at IS NULL ORDER BY name ASC`
       ),
       db.query(
-        `SELECT id, address, city, state, status, estimated_profit
+        `SELECT deals.id, deals.address, deals.city, deals.state, deals.status,
+                deals.estimated_profit, deals.buyer_id, buyers.name AS buyer_name
          FROM deals
-         WHERE state IS NOT NULL AND status IN ('UCB', 'Closed')
-         ORDER BY created_at DESC`
+         LEFT JOIN buyers ON buyers.id = deals.buyer_id
+         WHERE deals.state IS NOT NULL AND deals.status IN ('UCB', 'Closed')
+         ORDER BY deals.created_at DESC`
       ),
     ]);
     const buyers = buyersResult.rows;
@@ -71,6 +77,12 @@ router.get("/buyers-map", async (req, res, next) => {
         bucket(abbr).buyers.push({ id: b.id, name: b.name, phone: b.phone, email: b.email });
       });
     });
+    // Every UCB/Closed deal's full address (street, city, state, ZIP - it's
+    // all one free-text column, see routes/deals.js) is exactly what a
+    // buyer's purchase location is, once deals.buyer_id links the two - see
+    // the "add_buyer_id_to_deals" migration. A deal without a known buyer
+    // still shows up (buyerName just comes through null), so this doesn't
+    // require every deal to have a buyer on file.
     const dealMarkers = [];
     deals.forEach((d) => {
       bucket(d.state).deals.push({
@@ -78,11 +90,32 @@ router.get("/buyers-map", async (req, res, next) => {
         address: d.address,
         city: d.city,
         status: d.status,
+        buyerName: d.buyer_name || null,
       });
       const coord = cityCoordFor(d.city, d.state);
       if (coord) {
-        dealMarkers.push({ id: d.id, x: coord.x, y: coord.y, state: d.state, address: d.address, city: d.city, status: d.status });
+        dealMarkers.push({
+          id: d.id,
+          x: coord.x,
+          y: coord.y,
+          state: d.state,
+          address: d.address,
+          city: d.city,
+          status: d.status,
+          buyerName: d.buyer_name || null,
+        });
       }
+    });
+
+    // Same buyer_id link, grouped by buyer instead of by state - feeds the
+    // Buyer Directory table's "Purchased" column below the map, so a
+    // buyer's exact purchase address shows up there too, not just on hover
+    // on the map itself.
+    const purchasesByBuyer = {};
+    deals.forEach((d) => {
+      if (!d.buyer_id) return;
+      if (!purchasesByBuyer[d.buyer_id]) purchasesByBuyer[d.buyer_id] = [];
+      purchasesByBuyer[d.buyer_id].push({ address: d.address, status: d.status });
     });
 
     // Serialized once here (not left to the view) so it's easy to guard
@@ -99,6 +132,7 @@ router.get("/buyers-map", async (req, res, next) => {
       statesWithData: Object.keys(stateData),
       clientDataJson: clientData,
       buyers,
+      purchasesByBuyer,
       deletedBuyer: req.query.deletedBuyer
         ? (await db.query(`SELECT id, name FROM buyers WHERE id = $1 AND deleted_at IS NOT NULL`, [req.query.deletedBuyer])).rows[0] || null
         : null,
