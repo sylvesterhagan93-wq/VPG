@@ -50,5 +50,77 @@ module.exports = {
   "Gold Beach|OR": {
     "x": 32.1,
     "y": 150
+  },
+  "Show Low|AZ": {
+    "x": 237.9,
+    "y": 387.6
+  },
+  "Phoenix|AZ": {
+    "x": 197.2,
+    "y": 399.8
+  },
+  "Elizabeth City|NC": {
+    "x": 853.2,
+    "y": 323.1
+  },
+  "Apache Junction|AZ": {
+    "x": 206.8,
+    "y": 402.1
+  },
+  "Sun City|AZ": {
+    "x": 194.2,
+    "y": 395.7
+  },
+  "Tempe|AZ": {
+    "x": 199.6,
+    "y": 400.7
+  },
+  "Mesa|AZ": {
+    "x": 201.6,
+    "y": 401.3
+  },
+  "Glendale|AZ": {
+    "x": 195.5,
+    "y": 397.4
+  },
+  "Prescott Valley|AZ": {
+    "x": 196.8,
+    "y": 372.7
+  },
+  "Surprise|AZ": {
+    "x": 192.5,
+    "y": 394.8
+  },
+  "Casa Grande|AZ": {
+    "x": 201,
+    "y": 413.6
+  },
+  "Scottsdale|AZ": {
+    "x": 200.2,
+    "y": 399.2
+  },
+  "Chandler|AZ": {
+    "x": 201,
+    "y": 403.7
+  },
+  "Tucson|AZ": {
+    "x": 213.2,
+    "y": 430.8
+  },
+  "San Tan Valley|AZ": {
+    "x": 206.1,
+    "y": 407
+  },
+  "Globe|AZ": {
+    "x": 220.9,
+    "y": 404.9
+  },
+  "Sacramento|CA": {
+    "x": 55.6,
+    "y": 248
+  },
+  "North Highlands|CA": {
+    "x": 58.1,
+    "y": 246.2
   }
 };

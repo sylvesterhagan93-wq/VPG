@@ -155,11 +155,57 @@
         cityGroups[key].deals.push({ id: m.id, address: m.address, status: m.status, buyerName: m.buyerName });
       });
 
+      // Two different cities can be close enough together (e.g. the
+      // Phoenix metro area - 11 different AZ cities within ~15px of each
+      // other at this projection scale) that their stars visually overlap
+      // and become impossible to click individually - a real bug caught
+      // by a Playwright test that aimed at Phoenix's star and landed on
+      // Scottsdale's instead, because SVG hit-testing resolves an
+      // overlapping click to whichever element is drawn on top. This is
+      // a pure RENDER-position nudge (renderX/renderY) - it never touches
+      // group.x/group.y (the true projected city coordinate) or which
+      // deals belong to which city, only where each city's star is drawn,
+      // via a simple iterative "push apart" relaxation so no two distinct
+      // city stars ever render closer than MIN_SEP apart.
+      var MIN_SEP = 13;
+      cityGroupOrder.forEach(function (key) {
+        cityGroups[key].renderX = cityGroups[key].x;
+        cityGroups[key].renderY = cityGroups[key].y;
+      });
+      for (var relaxIter = 0; relaxIter < 80; relaxIter++) {
+        var anyMoved = false;
+        for (var ai = 0; ai < cityGroupOrder.length; ai++) {
+          for (var bi = ai + 1; bi < cityGroupOrder.length; bi++) {
+            var ga = cityGroups[cityGroupOrder[ai]];
+            var gb = cityGroups[cityGroupOrder[bi]];
+            var dx = gb.renderX - ga.renderX;
+            var dy = gb.renderY - ga.renderY;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MIN_SEP) {
+              anyMoved = true;
+              if (dist < 0.001) {
+                var angle = ((ai * 53 + bi * 17) % 360) * Math.PI / 180;
+                dx = Math.cos(angle);
+                dy = Math.sin(angle);
+                dist = 1;
+              }
+              var push = (MIN_SEP - dist) / 2;
+              var ux = dx / dist, uy = dy / dist;
+              ga.renderX -= ux * push;
+              ga.renderY -= uy * push;
+              gb.renderX += ux * push;
+              gb.renderY += uy * push;
+            }
+          }
+        }
+        if (!anyMoved) break;
+      }
+
       cityGroupOrder.forEach(function (key) {
         var group = cityGroups[key];
         var g = document.createElementNS(SVG_NS, 'g');
         g.setAttribute('class', 'deal-star');
-        g.setAttribute('transform', 'translate(' + group.x + ',' + group.y + ')');
+        g.setAttribute('transform', 'translate(' + group.renderX + ',' + group.renderY + ')');
         g.setAttribute('data-state', group.state);
         g.setAttribute('tabindex', '0');
         g.setAttribute('role', 'button');
