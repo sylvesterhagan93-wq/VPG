@@ -61,6 +61,24 @@
           <% }) %>
         </div>
 
+        <div class="section-label">Home City <span class="you-tag">(optional)</span></div>
+        <div class="page-subtitle" style="margin-bottom:12px;">
+          Where this buyer is physically based - not necessarily where they buy. Lets you find them by clicking
+          their home city's star on the map, separate from where they've purchased or are vetted to target. Only
+          cities already on the map are listed here.
+        </div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="home_city">Home City</label>
+            <select id="home_city" name="home_city">
+              <option value="">&mdash; None &mdash;</option>
+              <% cityOptions.forEach(function(opt) { %>
+                <option value="<%= opt.key %>" <%= buyer.home_city_key === opt.key ? 'selected' : '' %>><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
         <div class="section-label">Notes</div>
         <div class="form-grid">
           <div class="field full">

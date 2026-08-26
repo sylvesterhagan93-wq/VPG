@@ -24,7 +24,7 @@
 
     <div class="map-legend">
       <span class="map-legend-item"><span class="map-legend-swatch has-data"></span> State has a buyer and/or a deal</span>
-      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> A UCB/Closed deal and/or a vetted buyer targeting that city (hover for a quick look, click a star for exact purchase addresses and any vetted-but-not-yet-purchased buyers there)</span>
+      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> A UCB/Closed deal, a vetted buyer targeting that city, and/or a vetted buyer based there (hover for a quick look, click a star for exact purchase addresses and every buyer connected to that city)</span>
     </div>
 
     <div class="map-grid">
@@ -72,6 +72,7 @@
             <tr>
               <th>Name</th>
               <th>Contact</th>
+              <th>Home</th>
               <th>Target States</th>
               <th>Purchased</th>
               <th>Notes</th>
@@ -87,6 +88,7 @@
                   <% if (b.email) { %><div><%= b.email %></div><% } %>
                   <% if (!b.phone && !b.email) { %>-<% } %>
                 </td>
+                <td><%= (b.home_city && b.home_state) ? (b.home_city + ', ' + b.home_state) : '-' %></td>
                 <td>
                   <% (b.target_states || []).forEach(function(abbr) { %>
                     <span class="state-tag"><%= abbr %></span>
@@ -149,7 +151,7 @@
       DATA.dealMarkers.forEach(function (m) {
         var key = m.x + ',' + m.y;
         if (!cityGroups[key]) {
-          cityGroups[key] = { x: m.x, y: m.y, state: m.state, city: m.city, deals: [], prospects: [] };
+          cityGroups[key] = { x: m.x, y: m.y, state: m.state, city: m.city, deals: [], prospects: [], residents: [] };
           cityGroupOrder.push(key);
         }
         cityGroups[key].deals.push({ id: m.id, address: m.address, status: m.status, buyerName: m.buyerName });
@@ -168,10 +170,26 @@
         var cp = DATA.cityProspects[cityKey];
         var key = cp.x + ',' + cp.y;
         if (!cityGroups[key]) {
-          cityGroups[key] = { x: cp.x, y: cp.y, state: cp.state, city: cp.city, deals: [], prospects: [] };
+          cityGroups[key] = { x: cp.x, y: cp.y, state: cp.state, city: cp.city, deals: [], prospects: [], residents: [] };
           cityGroupOrder.push(key);
         }
         cityGroups[key].prospects = cp.buyers;
+      });
+
+      // A buyer's HOME city - where they're physically based, independent
+      // of where they buy (see routes/buyersMap.js's cityResidents) - is a
+      // third reason a star can exist. These buyers are already vetted/
+      // real (Sylvester has done business with them), so they're labeled
+      // "Based Here," never "not yet purchased" - that phrasing is
+      // specific to the cityProspects case above.
+      Object.keys(DATA.cityResidents || {}).forEach(function (cityKey) {
+        var cr = DATA.cityResidents[cityKey];
+        var key = cr.x + ',' + cr.y;
+        if (!cityGroups[key]) {
+          cityGroups[key] = { x: cr.x, y: cr.y, state: cr.state, city: cr.city, deals: [], prospects: [], residents: [] };
+          cityGroupOrder.push(key);
+        }
+        cityGroups[key].residents = cr.buyers;
       });
 
       // Two different cities can be close enough together (e.g. the
@@ -228,7 +246,7 @@
         g.setAttribute('data-state', group.state);
         g.setAttribute('tabindex', '0');
         g.setAttribute('role', 'button');
-        g.setAttribute('aria-label', group.city + ', ' + group.state + ' - view purchases and vetted buyers');
+        g.setAttribute('aria-label', group.city + ', ' + group.state + ' - view purchases, vetted buyers, and buyers based here');
         var path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('d', STAR_D);
         var title = document.createElementNS(SVG_NS, 'title');
@@ -265,6 +283,10 @@
         if (group.prospects && group.prospects.length) {
           base += '\n' + group.prospects.length + ' vetted buyer' + (group.prospects.length > 1 ? 's' : '') +
             ' targeting this area (not yet purchased) - click for details.';
+        }
+        if (group.residents && group.residents.length) {
+          base += '\n' + group.residents.length + ' vetted buyer' + (group.residents.length > 1 ? 's' : '') +
+            ' based in this area - click for details.';
         }
         return base;
       }
@@ -383,6 +405,17 @@
             var contact = [p.phone, p.email].filter(Boolean).map(escapeHtml).join(' &middot; ');
             html += '<div class="buyer-chip"><strong>' + escapeHtml(p.name) + '</strong>';
             html += '<div class="deal-chip-buyer">Vetted &ndash; has not purchased from us yet</div>';
+            if (contact) html += '<div class="buyer-chip-contact">' + contact + '</div>';
+            html += '</div>';
+          });
+        }
+        if (group.residents && group.residents.length) {
+          html += '<div class="section-label">Based Here (' + group.residents.length + ')</div>';
+          group.residents.forEach(function (r) {
+            var contact = [r.phone, r.email].filter(Boolean).map(escapeHtml).join(' &middot; ');
+            var buysWhere = (r.targetStates && r.targetStates.length) ? r.targetStates.join(', ') : 'not on file';
+            html += '<div class="buyer-chip"><strong>' + escapeHtml(r.name) + '</strong>';
+            html += '<div class="deal-chip-buyer">Vetted buyer &ndash; based here, buys in ' + escapeHtml(buysWhere) + '</div>';
             if (contact) html += '<div class="buyer-chip-contact">' + contact + '</div>';
             html += '</div>';
           });

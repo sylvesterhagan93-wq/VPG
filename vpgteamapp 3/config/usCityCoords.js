@@ -138,5 +138,28 @@ module.exports = {
   "Avon Lake|OH": {
     "x": 732.8,
     "y": 223.5
-  }
+  },
+  "Seattle|WA": { "x": 97.6, "y": 46.3 },
+  "San Antonio|TX": { "x": 448.7, "y": 516.3 },
+  "Gary|IN": { "x": 643.5, "y": 232.2 },
+  "Los Angeles|CA": { "x": 86.8, "y": 363.1 },
+  "Detroit|MI": { "x": 713.2, "y": 207.2 },
+  "Vancouver|WA": { "x": 80.2, "y": 87.6 },
+  "Milwaukee|WI": { "x": 631.3, "y": 200.1 },
+  "Midland|TX": { "x": 381.7, "y": 454.7 },
+  "Spokane|WA": { "x": 171.1, "y": 63.9 },
+  "Long Beach|CA": { "x": 86.2, "y": 369.6 },
+  "Columbus|OH": { "x": 721.4, "y": 260.8 },
+  "Naperville|IL": { "x": 629.7, "y": 229.8 },
+  "Atlanta|GA": { "x": 715, "y": 405.1 },
+  "Las Vegas|NV": { "x": 153, "y": 328.1 },
+  "Buffalo|NY": { "x": 779.5, "y": 183.8 },
+  "Zanesville|OH": { "x": 738.3, "y": 258.9 },
+  "Richmond|VA": { "x": 826.7, "y": 299.4 },
+  "Kansas City|MO": { "x": 522.8, "y": 295.7 },
+  "Fort Worth|TX": { "x": 472.8, "y": 440.9 },
+  "Tallahassee|FL": { "x": 726.2, "y": 479.8 },
+  "Flagstaff|AZ": { "x": 211.6, "y": 361.6 },
+  "Dayton|OH": { "x": 701.6, "y": 268.1 },
+  "Irvine|CA": { "x": 92.5, "y": 373.1 }
 };

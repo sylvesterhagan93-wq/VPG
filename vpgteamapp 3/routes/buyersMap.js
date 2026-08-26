@@ -19,7 +19,19 @@ function cityCoordFor(city, state) {
 }
 
 function buyerFormDefaults() {
-  return { name: "", phone: "", email: "", target_states: [], target_cities: [], notes: "" };
+  return { name: "", phone: "", email: "", target_states: [], target_cities: [], home_city_key: "", notes: "" };
+}
+
+// A buyer's home city is a single select (not a checkbox group like
+// target_cities) validated the same way - only a "City|ST" key that
+// actually has a map coordinate is accepted, so a bad/typo'd value can
+// never produce a home_city/home_state pair with no star to show up on.
+// Returns { city: null, state: null } for a blank/invalid selection.
+function normalizeHomeCity(raw) {
+  const key = raw ? String(raw).trim() : "";
+  if (!key || !CITY_COORDS[key]) return { city: null, state: null };
+  const [city, state] = key.split("|");
+  return { city, state };
 }
 
 // Checkbox groups submit as a single string (one box checked), an array
@@ -163,10 +175,39 @@ router.get("/buyers-map", async (req, res, next) => {
       });
     });
 
+    // A buyer's HOME city (buyers.home_city/home_state - where they
+    // physically are, matched from their phone's area code, see the
+    // project doc) is a third, separate reason a star can carry a buyer:
+    // distinct from an actual purchase (dealMarkers) and from a vetted
+    // buyer specifically targeting that city to buy (cityProspects) - a
+    // buyer can be based in Toledo, OH while only buying in Arizona, and
+    // still needs to be findable by clicking Toledo's star. Every buyer
+    // in this bucket is already vetted/a real buyer Sylvester has done
+    // business with (see the project doc) - the panel/tooltip say "Based
+    // Here," never "not yet purchased," since that phrase is specifically
+    // about the cityProspects case above.
+    const cityResidents = {};
+    buyers.forEach((b) => {
+      if (!b.home_city || !b.home_state) return;
+      const coord = cityCoordFor(b.home_city, b.home_state);
+      if (!coord) return;
+      const key = `${b.home_city}|${b.home_state}`;
+      if (!cityResidents[key]) {
+        cityResidents[key] = { x: coord.x, y: coord.y, city: b.home_city, state: b.home_state, buyers: [] };
+      }
+      cityResidents[key].buyers.push({
+        id: b.id,
+        name: b.name,
+        phone: b.phone,
+        email: b.email,
+        targetStates: b.target_states || [],
+      });
+    });
+
     // Serialized once here (not left to the view) so it's easy to guard
     // against a stray "</script>" inside free-text fields (buyer notes,
     // deal address) breaking out of the inline <script> tag it's embedded in.
-    const clientData = JSON.stringify({ stateData, dealMarkers, cityProspects }).replace(/<\//g, "<\\/");
+    const clientData = JSON.stringify({ stateData, dealMarkers, cityProspects, cityResidents }).replace(/<\//g, "<\\/");
 
     res.render("buyers-map", {
       userName: req.session.userName,
@@ -203,12 +244,13 @@ router.post("/buyers", async (req, res, next) => {
   const body = req.body;
   const targetStates = normalizeTargetStates(body.target_states);
   const targetCities = normalizeTargetCities(body.target_cities);
+  const homeCity = normalizeHomeCity(body.home_city);
 
   if (!body.name || !body.name.trim()) {
     return res.render("buyer-form", {
       userName: req.session.userName,
       mode: "new",
-      buyer: { ...body, target_states: targetStates, target_cities: targetCities },
+      buyer: { ...body, target_states: targetStates, target_cities: targetCities, home_city_key: body.home_city || "" },
       stateNames: STATE_NAMES,
       cityOptions: cityOptionList(),
       error: "Please enter a buyer name.",
@@ -217,14 +259,16 @@ router.post("/buyers", async (req, res, next) => {
 
   try {
     await db.query(
-      `INSERT INTO buyers (name, phone, email, target_states, target_cities, notes, created_by_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO buyers (name, phone, email, target_states, target_cities, home_city, home_state, notes, created_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         body.name.trim(),
         (body.phone || "").trim() || null,
         (body.email || "").trim() || null,
         targetStates,
         targetCities,
+        homeCity.city,
+        homeCity.state,
         (body.notes || "").trim() || null,
         req.session.userId,
       ]
@@ -240,6 +284,7 @@ router.get("/buyers/:id/edit", async (req, res, next) => {
     const result = await db.query("SELECT * FROM buyers WHERE id = $1", [req.params.id]);
     const buyer = result.rows[0];
     if (!buyer) return res.status(404).send("Buyer not found.");
+    buyer.home_city_key = buyer.home_city && buyer.home_state ? `${buyer.home_city}|${buyer.home_state}` : "";
 
     res.render("buyer-form", {
       userName: req.session.userName,
@@ -258,12 +303,13 @@ router.post("/buyers/:id/edit", async (req, res, next) => {
   const body = req.body;
   const targetStates = normalizeTargetStates(body.target_states);
   const targetCities = normalizeTargetCities(body.target_cities);
+  const homeCity = normalizeHomeCity(body.home_city);
 
   if (!body.name || !body.name.trim()) {
     return res.render("buyer-form", {
       userName: req.session.userName,
       mode: "edit",
-      buyer: { ...body, id: req.params.id, target_states: targetStates, target_cities: targetCities },
+      buyer: { ...body, id: req.params.id, target_states: targetStates, target_cities: targetCities, home_city_key: body.home_city || "" },
       stateNames: STATE_NAMES,
       cityOptions: cityOptionList(),
       error: "Please enter a buyer name.",
@@ -272,14 +318,17 @@ router.post("/buyers/:id/edit", async (req, res, next) => {
 
   try {
     const result = await db.query(
-      `UPDATE buyers SET name = $1, phone = $2, email = $3, target_states = $4, target_cities = $5, notes = $6
-       WHERE id = $7`,
+      `UPDATE buyers SET name = $1, phone = $2, email = $3, target_states = $4, target_cities = $5,
+              home_city = $6, home_state = $7, notes = $8
+       WHERE id = $9`,
       [
         body.name.trim(),
         (body.phone || "").trim() || null,
         (body.email || "").trim() || null,
         targetStates,
         targetCities,
+        homeCity.city,
+        homeCity.state,
         (body.notes || "").trim() || null,
         req.params.id,
       ]
