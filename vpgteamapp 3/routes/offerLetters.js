@@ -43,6 +43,37 @@ function defaultEmailSubject(propertyAddress) {
   return `Property Purchase Proposal - ${propertyAddress || "[property address]"}`;
 }
 
+// Shared submitted-body parser, used by both the preview step (POST
+// /offer-letters/send) and the approve step (POST /offer-letters/send/confirm)
+// so both stages read the form the exact same way and never drift apart.
+function extractFields(body) {
+  const fields = {
+    seller_name: (body.seller_name || "").trim(),
+    seller_email: (body.seller_email || "").trim(),
+    property_address: (body.property_address || "").trim(),
+    cash_offer_amount: (body.cash_offer_amount || "").trim(),
+    cash_closing_timeframe: (body.cash_closing_timeframe || "").trim(),
+    concierge_offer_amount: (body.concierge_offer_amount || "").trim(),
+    concierge_closing_timeframe: (body.concierge_closing_timeframe || "").trim(),
+    additional_notes: (body.additional_notes || "").trim(),
+    signer_name: (body.signer_name || "").trim(),
+    signer_title: (body.signer_title || "").trim(),
+    email_subject: (body.email_subject || "").trim(),
+    email_body: (body.email_body || "").trim(),
+  };
+
+  const missing = [];
+  if (!fields.seller_name) missing.push("Seller Name");
+  if (!fields.seller_email) missing.push("Seller Email");
+  if (!fields.property_address) missing.push("Property Address");
+  if (!fields.cash_offer_amount) missing.push("Cash Offer Amount");
+  if (!fields.concierge_offer_amount) missing.push("Concierge Offer Amount");
+  if (!fields.email_subject) missing.push("Email Subject");
+  if (!fields.email_body) missing.push("Email Body");
+
+  return { fields, missing };
+}
+
 function blankFormValues() {
   return {
     seller_name: "",
@@ -69,31 +100,85 @@ router.get("/offer-letters/new", (req, res) => {
   });
 });
 
+// Step 1 of 2: builds the exact proposal PDF that would be attached and
+// shows it on screen before anything is emailed - same "preview, then
+// approve" flow as the 4 e-sign agreement types (routes/agreements.js).
+// Nothing is emailed and nothing is written to `offer_letters` here.
 router.post("/offer-letters/send", async (req, res, next) => {
-  const body = req.body;
-  const fields = {
-    seller_name: (body.seller_name || "").trim(),
-    seller_email: (body.seller_email || "").trim(),
-    property_address: (body.property_address || "").trim(),
-    cash_offer_amount: (body.cash_offer_amount || "").trim(),
-    cash_closing_timeframe: (body.cash_closing_timeframe || "").trim(),
-    concierge_offer_amount: (body.concierge_offer_amount || "").trim(),
-    concierge_closing_timeframe: (body.concierge_closing_timeframe || "").trim(),
-    additional_notes: (body.additional_notes || "").trim(),
-    signer_name: (body.signer_name || "").trim(),
-    signer_title: (body.signer_title || "").trim(),
-    email_subject: (body.email_subject || "").trim(),
-    email_body: (body.email_body || "").trim(),
-  };
+  const { fields, missing } = extractFields(req.body);
 
-  const missing = [];
-  if (!fields.seller_name) missing.push("Seller Name");
-  if (!fields.seller_email) missing.push("Seller Email");
-  if (!fields.property_address) missing.push("Property Address");
-  if (!fields.cash_offer_amount) missing.push("Cash Offer Amount");
-  if (!fields.concierge_offer_amount) missing.push("Concierge Offer Amount");
-  if (!fields.email_subject) missing.push("Email Subject");
-  if (!fields.email_body) missing.push("Email Body");
+  if (missing.length > 0) {
+    return res.render("offer-letter-form", {
+      error: `Please fill in: ${missing.join(", ")}`,
+      formValues: fields,
+      userName: req.session.userName,
+      emailConfigured: isEmailConfigured(),
+    });
+  }
+
+  try {
+    const pdfBuffer = await generateOfferLetterPdf({
+      sellerName: fields.seller_name,
+      propertyAddress: fields.property_address,
+      cashOfferAmount: fields.cash_offer_amount,
+      cashClosingTimeframe: fields.cash_closing_timeframe,
+      conciergeOfferAmount: fields.concierge_offer_amount,
+      conciergeClosingTimeframe: fields.concierge_closing_timeframe,
+      signerName: fields.signer_name,
+      signerTitle: fields.signer_title,
+      additionalNotes: fields.additional_notes,
+    });
+
+    res.render("offer-letter-preview", {
+      pdfBase64: pdfBuffer.toString("base64"),
+      fields,
+      formDataJson: JSON.stringify(fields),
+      userName: req.session.userName,
+      emailConfigured: isEmailConfigured(),
+    });
+  } catch (err) {
+    // Nothing was ever attempted to be emailed, so unlike the confirm-step
+    // catch below, this doesn't log a 'failed' row - there's nothing to log.
+    return res.render("offer-letter-form", {
+      error: `Could not build a preview: ${err.message}`,
+      formValues: fields,
+      userName: req.session.userName,
+      emailConfigured: isEmailConfigured(),
+    });
+  }
+});
+
+// "Back to Edit" from the preview page - re-renders the form pre-filled with
+// exactly what was submitted, so nothing typed in is lost. Read-only.
+router.post("/offer-letters/send/edit", (req, res) => {
+  let fields;
+  try {
+    fields = JSON.parse(req.body.formDataJson || "{}");
+  } catch (err) {
+    fields = blankFormValues();
+  }
+
+  res.render("offer-letter-form", {
+    error: null,
+    formValues: fields,
+    userName: req.session.userName,
+    emailConfigured: isEmailConfigured(),
+  });
+});
+
+// Step 2 of 2: "Approve & Send" from the preview page. Re-parses the exact
+// same data the preview was built from and re-validates it (defense in
+// depth - this is the route that actually emails the seller), then does the
+// real send and the `offer_letters` insert.
+router.post("/offer-letters/send/confirm", async (req, res, next) => {
+  let body;
+  try {
+    body = JSON.parse(req.body.formDataJson || "{}");
+  } catch (err) {
+    return res.status(400).send("Could not read the previewed letter's data. Please go back and try again.");
+  }
+
+  const { fields, missing } = extractFields(body);
 
   if (missing.length > 0) {
     return res.render("offer-letter-form", {

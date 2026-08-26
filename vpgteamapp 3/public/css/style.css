@@ -1089,3 +1089,46 @@ select.badge {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* ---------- Document preview (Preview & Send flow) ---------- */
+
+.container.preview-container { max-width: 900px; }
+
+.pdf-preview-card {
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.pdf-preview-frame {
+  width: 100%;
+  height: 78vh;
+  min-height: 480px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
+
+.pdf-preview-fallback {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.preview-actions form { margin: 0; }
+
+@media (max-width: 760px) {
+  .preview-actions {
+    flex-direction: column-reverse;
+  }
+  .preview-actions .btn,
+  .preview-actions .btn-secondary {
+    width: 100%;
+  }
+}
