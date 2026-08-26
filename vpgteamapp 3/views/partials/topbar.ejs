@@ -4,18 +4,51 @@
   </div>
   <nav class="topnav">
     <a href="/dashboard">Dashboard</a>
-    <a href="/offer-letters/new">Offer Letters</a>
     <a href="/dealboard">Deal Board</a>
     <a href="/buyers-map">Buyers Map</a>
     <a href="/updates">Updates</a>
     <a href="/news">Business News</a>
     <a href="/merch">Merch</a>
-    <a href="/team">Team</a>
   </nav>
-  <div class="user-info">
-    <span>Signed in as <strong><%= userName %></strong></span>
-    <form method="POST" action="/logout">
-      <button type="submit" class="linklike">Log out</button>
-    </form>
+  <div class="user-menu" id="user-menu">
+    <button type="button" class="user-menu-trigger" id="user-menu-trigger" aria-haspopup="true" aria-expanded="false">
+      <span>Signed in as <strong><%= userName %></strong></span>
+      <svg class="user-menu-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+    <div class="user-menu-dropdown" id="user-menu-dropdown">
+      <a href="/team" class="user-menu-item">Team</a>
+      <form method="POST" action="/logout" class="user-menu-item-form">
+        <button type="submit" class="user-menu-item user-menu-item-button">Log out</button>
+      </form>
+    </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('user-menu-trigger');
+    var menu = document.getElementById('user-menu');
+    if (!trigger || !menu) return;
+
+    function closeMenu() {
+      menu.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = menu.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!menu.contains(e.target)) closeMenu();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMenu();
+    });
+  })();
+</script>
