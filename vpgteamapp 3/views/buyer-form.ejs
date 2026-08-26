@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - <%= mode === 'new' ? 'Add Buyer' : 'Edit Buyer' %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container">
+    <div class="page-title"><%= mode === 'new' ? 'Add Buyer' : 'Edit Buyer' %></div>
+    <div class="page-subtitle">Shows up on the Buyers Map right away.</div>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <div class="card">
+      <form method="POST" action="<%= mode === 'new' ? '/buyers' : '/buyers/' + buyer.id + '/edit' %>">
+        <div class="section-label" style="margin-top:0;">Buyer</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="name">Buyer Name *</label>
+            <input type="text" id="name" name="name" value="<%= buyer.name || '' %>" required />
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="text" id="phone" name="phone" value="<%= buyer.phone || '' %>" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="<%= buyer.email || '' %>" />
+          </div>
+        </div>
+
+        <div class="section-label">Target States</div>
+        <div class="page-subtitle" style="margin-bottom:12px;">Check every state this buyer buys in - drives the map and the Buyer Alerts when we land a deal there.</div>
+        <div class="state-checkbox-grid">
+          <% Object.keys(stateNames).sort().forEach(function(abbr) { %>
+            <label class="state-checkbox">
+              <input type="checkbox" name="target_states" value="<%= abbr %>" <%= (buyer.target_states || []).includes(abbr) ? 'checked' : '' %> />
+              <%= stateNames[abbr] %>
+            </label>
+          <% }) %>
+        </div>
+
+        <div class="section-label">Notes</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes"><%= buyer.notes || '' %></textarea>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; display:flex; gap:12px;">
+          <button type="submit" class="btn"><%= mode === 'new' ? 'Add Buyer' : 'Save Changes' %></button>
+          <a href="/buyers-map" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

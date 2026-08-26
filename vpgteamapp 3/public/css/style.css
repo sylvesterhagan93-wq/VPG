@@ -794,3 +794,224 @@ select.badge {
   border-radius: 6px;
   margin-bottom: 20px;
 }
+
+/* ---------- Buyer Alerts (dashboard) ---------- */
+
+.buyer-alerts-panel {
+  background: var(--card);
+  border: 1px solid #b7e0c6;
+  border-left: 4px solid var(--success);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.buyer-alerts-panel-title {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buyer-alerts-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  display: inline-block;
+  animation: buyer-alert-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes buyer-alert-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+.buyer-alert-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.buyer-alert-row:first-of-type { border-top: none; padding-top: 0; }
+
+.buyer-alert-info { flex: 1; min-width: 240px; }
+
+.buyer-alert-contact {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* ---------- Buyers Map ---------- */
+
+.container.map-container { max-width: 1180px; }
+
+.map-legend {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-legend-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--border);
+  display: inline-block;
+}
+
+.map-legend-swatch.has-data { background: rgba(95, 143, 69, 0.35); border-color: rgba(95, 143, 69, 0.6); }
+
+.map-legend-star { color: #d98c00; font-size: 16px; line-height: 1; }
+
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .map-grid { grid-template-columns: 1fr; }
+}
+
+.map-card {
+  position: relative;
+  padding: 16px;
+}
+
+.map-reset-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.us-map {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.state-path {
+  fill: #e3e7ef;
+  stroke: #ffffff;
+  stroke-width: 1;
+  cursor: pointer;
+  transition: fill 0.2s ease;
+  outline: none;
+}
+
+.state-path.has-data { fill: rgba(95, 143, 69, 0.35); }
+
+.state-path:hover { fill: var(--accent-hover); }
+
+.state-path:focus-visible { stroke: var(--navy); stroke-width: 2; }
+
+.state-path.selected {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 6px rgba(95, 143, 69, 0.9));
+  animation: state-select-glow 0.6s ease-out;
+}
+
+@keyframes state-select-glow {
+  0% { filter: drop-shadow(0 0 0 rgba(95, 143, 69, 0)); }
+  40% { filter: drop-shadow(0 0 14px rgba(95, 143, 69, 1)); }
+  100% { filter: drop-shadow(0 0 6px rgba(95, 143, 69, 0.9)); }
+}
+
+.deal-star {
+  fill: #f2b705;
+  stroke: var(--navy);
+  stroke-width: 0.6;
+  pointer-events: none;
+}
+
+.side-panel-card {
+  padding: 20px;
+  min-height: 200px;
+}
+
+.side-panel-empty {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.side-panel-state-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.buyer-chip, .deal-chip {
+  font-size: 13px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.buyer-chip:first-of-type, .deal-chip:first-of-type { border-top: none; }
+
+.buyer-chip-contact {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.state-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.state-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f8faff;
+}
+
+.state-checkbox input { width: auto; margin: 0; }
+
+.state-tag {
+  display: inline-block;
+  background: #eaf1ff;
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin: 0 4px 4px 0;
+}
+
+.buyer-notes-cell {
+  max-width: 240px;
+  color: var(--muted);
+  font-size: 13px;
+}

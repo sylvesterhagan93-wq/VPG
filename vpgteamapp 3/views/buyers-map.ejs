@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPGteamapp - Buyers Map</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <%- include('partials/topbar') %>
+
+  <div class="container map-container">
+    <div class="page-title">Buyers Map</div>
+    <div class="page-subtitle">Click a state to see which buyers target it and which UCB/Closed deals we have there.</div>
+
+    <% if (isAdmin && deletedBuyer) { %>
+      <div class="alert info" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span>Removed <strong><%= deletedBuyer.name %></strong> from the buyer directory.</span>
+        <form method="POST" action="/buyers/<%= deletedBuyer.id %>/restore" style="margin:0;">
+          <button type="submit" class="btn-tiny reactivate">Undo</button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="map-legend">
+      <span class="map-legend-item"><span class="map-legend-swatch has-data"></span> State has a buyer and/or a deal</span>
+      <span class="map-legend-item"><span class="map-legend-star">&#9733;</span> UCB / Closed deal</span>
+    </div>
+
+    <div class="map-grid">
+      <div class="card map-card">
+        <button type="button" id="map-reset-btn" class="btn-tiny map-reset-btn" style="display:none;">Show All States</button>
+        <svg id="us-map-svg" class="us-map" viewBox="<%= mapViewBox %>" xmlns="http://www.w3.org/2000/svg">
+          <% Object.keys(mapStates).sort().forEach(function(abbr) {
+            var s = mapStates[abbr];
+            var bbox = s.bbox;
+            var bboxAttr = [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]].join(',');
+          %>
+            <path
+              class="state-path<%= statesWithData.includes(abbr) ? ' has-data' : '' %>"
+              data-state="<%= abbr %>"
+              data-name="<%= s.name %>"
+              data-bbox="<%= bboxAttr %>"
+              d="<%= s.d %>"
+              tabindex="0"
+              role="button"
+              aria-label="<%= s.name %>"
+            ><title><%= s.name %></title></path>
+          <% }) %>
+          <g id="deal-stars"></g>
+        </svg>
+      </div>
+
+      <div class="card side-panel-card">
+        <div id="side-panel-content">
+          <div class="side-panel-empty">Click a state on the map to see which buyers target it and which UCB/Closed deals we have there.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-title" style="font-size:18px; margin-top:36px; display:flex; align-items:center; justify-content:space-between;">
+      <span>Buyer Directory</span>
+      <a href="/buyers/new" class="btn" style="font-size:13px; padding:9px 16px;">+ Add Buyer</a>
+    </div>
+
+    <div class="card">
+      <% if (!buyers || buyers.length === 0) { %>
+        <div class="empty-state">No buyers added yet. Use "+ Add Buyer" above to add your first cash buyer.</div>
+      <% } else { %>
+        <table class="history">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Target States</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% buyers.forEach(function(b) { %>
+              <tr>
+                <td><%= b.name %></td>
+                <td>
+                  <% if (b.phone) { %><div><%= b.phone %></div><% } %>
+                  <% if (b.email) { %><div><%= b.email %></div><% } %>
+                  <% if (!b.phone && !b.email) { %>-<% } %>
+                </td>
+                <td>
+                  <% (b.target_states || []).forEach(function(abbr) { %>
+                    <span class="state-tag"><%= abbr %></span>
+                  <% }) %>
+                  <% if (!b.target_states || b.target_states.length === 0) { %>-<% } %>
+                </td>
+                <td class="buyer-notes-cell"><%= b.notes || '-' %></td>
+                <td style="white-space:nowrap;">
+                  <a class="btn-tiny" href="/buyers/<%= b.id %>/edit">Edit</a>
+                  <% if (isAdmin) { %>
+                    <form method="POST" action="/buyers/<%= b.id %>/delete" style="display:inline;"
+                          onsubmit="return confirm('Remove this buyer from the directory? You can undo it right after.');">
+                      <button type="submit" class="btn-tiny">Delete</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var DATA = <%- clientDataJson %>;
+      var STATE_NAMES = <%- JSON.stringify(stateNames) %>;
+
+      var svg = document.getElementById('us-map-svg');
+      var fullViewBox = svg.getAttribute('viewBox').split(' ').map(Number);
+      var paths = Array.prototype.slice.call(svg.querySelectorAll('.state-path'));
+      var starsGroup = document.getElementById('deal-stars');
+      var sidePanel = document.getElementById('side-panel-content');
+      var resetBtn = document.getElementById('map-reset-btn');
+
+      // Simple 5-point star, drawn once per deal marker and positioned with
+      // a <g transform="translate(x,y)"> so it lands in the same projected
+      // pixel space as the state paths (see config/usCityCoords.js).
+      var STAR_D = "M0,-9 L2.6,-2.8 L9.5,-2.8 L3.9,1.1 L6,8 L0,3.6 L-6,8 L-3.9,1.1 L-9.5,-2.8 L-2.6,-2.8 Z";
+      var SVG_NS = 'http://www.w3.org/2000/svg';
+      DATA.dealMarkers.forEach(function (m) {
+        var g = document.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'deal-star');
+        g.setAttribute('transform', 'translate(' + m.x + ',' + m.y + ')');
+        g.setAttribute('data-state', m.state);
+        var path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('d', STAR_D);
+        var title = document.createElementNS(SVG_NS, 'title');
+        title.textContent = m.address + (m.city ? ', ' + m.city : '') + ' - ' + m.status;
+        g.appendChild(path);
+        g.appendChild(title);
+        starsGroup.appendChild(g);
+      });
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      var currentVB = fullViewBox.slice();
+      var animId = null;
+      function animateViewBox(target, duration) {
+        if (animId) cancelAnimationFrame(animId);
+        var start = currentVB.slice();
+        var startTime = null;
+        function step(ts) {
+          if (!startTime) startTime = ts;
+          var t = Math.min(1, (ts - startTime) / duration);
+          var eased = 1 - Math.pow(1 - t, 3);
+          var next = start.map(function (v, i) { return v + (target[i] - v) * eased; });
+          svg.setAttribute('viewBox', next.join(' '));
+          if (t < 1) {
+            animId = requestAnimationFrame(step);
+          } else {
+            currentVB = target;
+            animId = null;
+          }
+        }
+        animId = requestAnimationFrame(step);
+      }
+
+      function renderPanel(abbr) {
+        var name = STATE_NAMES[abbr] || abbr;
+        var bucket = DATA.stateData[abbr] || { buyers: [], deals: [] };
+        var html = '<div class="side-panel-state-name">' + escapeHtml(name) + '</div>';
+        html += '<div class="section-label" style="margin-top:16px;">Buyers Here (' + bucket.buyers.length + ')</div>';
+        if (bucket.buyers.length === 0) {
+          html += '<div class="side-panel-empty">No buyers currently target ' + escapeHtml(name) + '.</div>';
+        } else {
+          bucket.buyers.forEach(function (b) {
+            var contact = [b.phone, b.email].filter(Boolean).map(escapeHtml).join(' &middot; ');
+            html += '<div class="buyer-chip"><strong>' + escapeHtml(b.name) + '</strong>';
+            if (contact) html += '<div class="buyer-chip-contact">' + contact + '</div>';
+            html += '</div>';
+          });
+        }
+        html += '<div class="section-label">UCB / Closed Deals (' + bucket.deals.length + ')</div>';
+        if (bucket.deals.length === 0) {
+          html += '<div class="side-panel-empty">No UCB or Closed deals in ' + escapeHtml(name) + ' yet.</div>';
+        } else {
+          bucket.deals.forEach(function (d) {
+            html += '<div class="deal-chip"><span class="badge ' + d.status + '">' + d.status + '</span> ' +
+              escapeHtml(d.address) + (d.city ? ', ' + escapeHtml(d.city) : '') + '</div>';
+          });
+        }
+        sidePanel.innerHTML = html;
+      }
+
+      function selectState(abbr, pathEl) {
+        paths.forEach(function (p) { p.classList.remove('selected'); });
+        pathEl.classList.add('selected');
+        var bbox = (pathEl.getAttribute('data-bbox') || '').split(',').map(Number);
+        if (bbox.length === 4) {
+          var padX = bbox[2] * 0.35 + 10;
+          var padY = bbox[3] * 0.35 + 10;
+          animateViewBox([bbox[0] - padX, bbox[1] - padY, bbox[2] + padX * 2, bbox[3] + padY * 2], 500);
+        }
+        renderPanel(abbr);
+        resetBtn.style.display = 'inline-block';
+      }
+
+      paths.forEach(function (p) {
+        p.addEventListener('click', function () { selectState(p.getAttribute('data-state'), p); });
+        p.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectState(p.getAttribute('data-state'), p);
+          }
+        });
+      });
+
+      resetBtn.addEventListener('click', function () {
+        paths.forEach(function (p) { p.classList.remove('selected'); });
+        animateViewBox(fullViewBox, 500);
+        sidePanel.innerHTML = '<div class="side-panel-empty">Click a state on the map to see which buyers target it and which UCB/Closed deals we have there.</div>';
+        resetBtn.style.display = 'none';
+      });
+    })();
+  </script>
+</body>
+</html>

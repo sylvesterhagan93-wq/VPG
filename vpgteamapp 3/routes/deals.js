@@ -10,6 +10,8 @@ const {
 } = require("../config/dealBoard");
 const { buildZillowUrl } = require("../services/zillow");
 const { buildBarChart, buildHBarChart } = require("../services/charts");
+const { checkBuyerAlertsForDeal } = require("../services/buyerAlerts");
+const { STATE_NAMES } = require("../config/usLocations");
 
 const router = express.Router();
 
@@ -49,6 +51,8 @@ function parseDateOrNull(v) {
 function dealFormDefaults() {
   return {
     address: "",
+    city: "",
+    state: "",
     property_type: "",
     exit_strategy: "",
     marketing_channel: "",
@@ -194,6 +198,7 @@ router.get("/dealboard/new", (req, res) => {
     propertyTypeSuggestions: PROPERTY_TYPE_SUGGESTIONS,
     exitStrategySuggestions: EXIT_STRATEGY_SUGGESTIONS,
     marketingChannelSuggestions: MARKETING_CHANNEL_SUGGESTIONS,
+    stateNames: STATE_NAMES,
     error: null,
   });
 });
@@ -210,20 +215,25 @@ router.post("/dealboard/new", async (req, res, next) => {
       propertyTypeSuggestions: PROPERTY_TYPE_SUGGESTIONS,
       exitStrategySuggestions: EXIT_STRATEGY_SUGGESTIONS,
       marketingChannelSuggestions: MARKETING_CHANNEL_SUGGESTIONS,
+      stateNames: STATE_NAMES,
       error: "Please enter a property address.",
     });
   }
 
   try {
     const status = STATUSES.includes(body.status) ? body.status : "Active";
-    await db.query(
+    const state = (body.state || "").trim().toUpperCase();
+    const insertResult = await db.query(
       `INSERT INTO deals
-        (address, property_type, exit_strategy, marketing_channel, buy_price, estimated_rehab,
+        (address, city, state, property_type, exit_strategy, marketing_channel, buy_price, estimated_rehab,
          arv, sale_price, estimated_profit, status, emd_received, misc_deal_costs, notes,
          deal_folder_url, created_by_user_id, closed_at, expected_closing_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+       RETURNING id`,
       [
         body.address.trim(),
+        (body.city || "").trim() || null,
+        STATE_NAMES[state] ? state : null,
         (body.property_type || "").trim() || null,
         (body.exit_strategy || "").trim() || null,
         (body.marketing_channel || "").trim() || null,
@@ -242,6 +252,7 @@ router.post("/dealboard/new", async (req, res, next) => {
         parseDateOrNull(body.expected_closing_date),
       ]
     );
+    await checkBuyerAlertsForDeal(insertResult.rows[0].id);
     res.redirect("/dealboard");
   } catch (err) {
     next(err);
@@ -262,6 +273,7 @@ router.get("/dealboard/:id/edit", async (req, res, next) => {
       propertyTypeSuggestions: PROPERTY_TYPE_SUGGESTIONS,
       exitStrategySuggestions: EXIT_STRATEGY_SUGGESTIONS,
       marketingChannelSuggestions: MARKETING_CHANNEL_SUGGESTIONS,
+      stateNames: STATE_NAMES,
       error: null,
     });
   } catch (err) {
@@ -281,12 +293,14 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
       propertyTypeSuggestions: PROPERTY_TYPE_SUGGESTIONS,
       exitStrategySuggestions: EXIT_STRATEGY_SUGGESTIONS,
       marketingChannelSuggestions: MARKETING_CHANNEL_SUGGESTIONS,
+      stateNames: STATE_NAMES,
       error: "Please enter a property address.",
     });
   }
 
   try {
     const status = STATUSES.includes(body.status) ? body.status : "Active";
+    const state = (body.state || "").trim().toUpperCase();
     const existing = await db.query("SELECT status, closed_at FROM deals WHERE id = $1", [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).send("Deal not found.");
 
@@ -299,13 +313,15 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
 
     await db.query(
       `UPDATE deals SET
-         address = $1, property_type = $2, exit_strategy = $3, marketing_channel = $4,
-         buy_price = $5, estimated_rehab = $6, arv = $7, sale_price = $8, estimated_profit = $9,
-         status = $10, emd_received = $11, misc_deal_costs = $12, notes = $13,
-         deal_folder_url = $14, updated_at = now(), closed_at = $15, expected_closing_date = $16
-       WHERE id = $17`,
+         address = $1, city = $2, state = $3, property_type = $4, exit_strategy = $5, marketing_channel = $6,
+         buy_price = $7, estimated_rehab = $8, arv = $9, sale_price = $10, estimated_profit = $11,
+         status = $12, emd_received = $13, misc_deal_costs = $14, notes = $15,
+         deal_folder_url = $16, updated_at = now(), closed_at = $17, expected_closing_date = $18
+       WHERE id = $19`,
       [
         body.address.trim(),
+        (body.city || "").trim() || null,
+        STATE_NAMES[state] ? state : null,
         (body.property_type || "").trim() || null,
         (body.exit_strategy || "").trim() || null,
         (body.marketing_channel || "").trim() || null,
@@ -324,6 +340,7 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
         req.params.id,
       ]
     );
+    await checkBuyerAlertsForDeal(req.params.id);
     res.redirect("/dealboard");
   } catch (err) {
     next(err);
@@ -354,6 +371,7 @@ router.post("/dealboard/:id/status", async (req, res, next) => {
       closedAt,
       req.params.id,
     ]);
+    await checkBuyerAlertsForDeal(req.params.id);
     res.redirect(req.get("Referrer") || "/dealboard");
   } catch (err) {
     next(err);

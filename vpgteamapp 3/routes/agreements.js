@@ -109,6 +109,7 @@ router.get("/dashboard", async (req, res, next) => {
       offerLettersResult,
       deletedOfferLetterResult,
       resentOfferLetterResult,
+      buyerAlertsResult,
     ] = await Promise.all([
       db.query(
         `SELECT agreements.*, users.name AS sent_by_name
@@ -164,6 +165,20 @@ router.get("/dashboard", async (req, res, next) => {
       req.query.resentOffer
         ? db.query(`SELECT id, seller_name, property_address FROM offer_letters WHERE id = $1`, [req.query.resentOffer])
         : Promise.resolve({ rows: [] }),
+      // Buyer Alerts - "we just got a UCB/Closed deal in a state one of our
+      // buyers targets, go contact them." Undismissed only, newest first;
+      // dismissing is a non-destructive action (see POST /buyer-alerts/:id/dismiss
+      // in routes/buyersMap.js) so it's not admin-gated.
+      db.query(
+        `SELECT buyer_alerts.*, buyers.name AS buyer_name, buyers.phone AS buyer_phone,
+                buyers.email AS buyer_email, deals.address AS deal_address, deals.city AS deal_city
+         FROM buyer_alerts
+         JOIN buyers ON buyers.id = buyer_alerts.buyer_id
+         JOIN deals ON deals.id = buyer_alerts.deal_id
+         WHERE buyer_alerts.dismissed_at IS NULL
+         ORDER BY buyer_alerts.created_at DESC
+         LIMIT 25`
+      ),
     ]);
 
     let resendNotice = null;
@@ -195,6 +210,7 @@ router.get("/dashboard", async (req, res, next) => {
       offerLetters: offerLettersResult.rows,
       deletedOfferLetter: deletedOfferLetterResult.rows[0] || null,
       offerResendNotice,
+      buyerAlerts: buyerAlertsResult.rows,
     });
   } catch (err) {
     next(err);

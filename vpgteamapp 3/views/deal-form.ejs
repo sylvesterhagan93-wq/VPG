@@ -26,6 +26,19 @@
             <input type="text" id="address" name="address" value="<%= deal.address || '' %>" required />
           </div>
           <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" value="<%= deal.city || '' %>" />
+          </div>
+          <div class="field">
+            <label for="state">State</label>
+            <select id="state" name="state">
+              <option value="">Select state...</option>
+              <% Object.keys(stateNames).sort().forEach(function(abbr) { %>
+                <option value="<%= abbr %>" <%= deal.state === abbr ? 'selected' : '' %>><%= stateNames[abbr] %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field">
             <label for="property_type">Property Type</label>
             <input type="text" id="property_type" name="property_type" list="property-type-options" value="<%= deal.property_type || '' %>" />
             <datalist id="property-type-options">
