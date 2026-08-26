@@ -9,7 +9,6 @@ const {
 } = require("../services/hellosign");
 const { normalizeMultiEntries } = require("../services/signerUtils");
 const { formatPropertyAddress } = require("../services/addressUtils");
-const { generateAgreementPdf } = require("../services/pdfGenerator");
 const { STATE_NAMES, COUNTIES_BY_STATE } = require("../config/usLocations");
 const { TITLE_COMPANIES } = require("../config/titleCompanies");
 const { getClevelandWeather } = require("../services/weather");
@@ -32,61 +31,6 @@ function buildMultiSignerEntries(typeDef, body) {
     map[s.key] = entries.length > 0 ? entries : [{ name: "", email: "" }];
   });
   return map;
-}
-
-// Turns a raw form-submission body into the { signers, fields } shape the
-// PDF generator / HelloSign send both need, plus a `missing` list for
-// required-field validation. Shared by the preview step (POST
-// /agreements/new/:type) and the approve step (POST
-// /agreements/new/:type/send) so both stages parse the exact same way and
-// can never drift apart - "what the preview showed" and "what got sent" are
-// always built from identical logic.
-function buildFieldsAndSigners(typeDef, body) {
-  // The "signs on behalf of VPG" signer is always forced to Sylvester here,
-  // regardless of what was submitted - this is what actually enforces the
-  // lock (the form doesn't even render editable inputs for it, but this is
-  // what stops someone from bypassing that by posting to either route
-  // directly).
-  const signers = {};
-  for (const s of typeDef.signers) {
-    if (s.internal) {
-      signers[s.key] = { name: VPG_PRINCIPAL.name, email: VPG_PRINCIPAL.email };
-    } else if (s.multiple) {
-      signers[s.key] = normalizeMultiEntries(body[`signer_${s.key}_name`], body[`signer_${s.key}_email`]);
-    } else {
-      signers[s.key] = {
-        name: (body[`signer_${s.key}_name`] || "").trim(),
-        email: (body[`signer_${s.key}_email`] || "").trim(),
-      };
-    }
-  }
-
-  const fields = {};
-  for (const f of typeDef.fields) {
-    fields[f.key] = (body[f.key] || "").trim();
-  }
-
-  const missing = [];
-  typeDef.signers.forEach((s) => {
-    if (s.internal) return;
-    if (s.multiple) {
-      const entries = signers[s.key] || [];
-      const complete = entries.filter((e) => e.name && e.email);
-      if (complete.length === 0) {
-        missing.push(`${s.label} (at least one)`);
-      } else if (complete.length !== entries.length) {
-        missing.push(`${s.label} - each row needs both a name and an email`);
-      }
-    } else {
-      if (!signers[s.key].name) missing.push(`${s.label} name`);
-      if (!signers[s.key].email) missing.push(`${s.label} email`);
-    }
-  });
-  typeDef.fields.forEach((f) => {
-    if (f.required && !fields[f.key]) missing.push(f.label);
-  });
-
-  return { signers, fields, missing };
 }
 
 // Real signature requests get a request id from HelloSign; mock sends
@@ -484,123 +428,58 @@ router.get("/agreements/new/:type", (req, res) => {
   });
 });
 
-// Step 1 of 2: builds the exact PDF that would be sent and shows it on
-// screen for a human to actually look at before anything goes out -
-// Sylvester asked for a "click send, see a preview, click approve, then it
-// sends" flow for all 4 agreement types. Nothing is sent to HelloSign and
-// nothing is written to the `agreements` table here; that only happens once
-// the preview is approved (POST /agreements/new/:type/send below). The
-// entire submitted form body is round-tripped through a hidden field
-// (formDataJson) on the preview page so Approve/Back both have the exact
-// same data to work from, without re-deriving it from a re-typed form.
 router.post("/agreements/new/:type", async (req, res) => {
   const typeDef = getType(req.params.type);
   if (!typeDef) return res.status(404).send("Unknown agreement type");
 
   const body = req.body;
-  const { signers, fields, missing } = buildFieldsAndSigners(typeDef, body);
 
-  if (missing.length > 0) {
-    return res.render("agreement-form", {
-      typeDef,
-      error: `Please fill in: ${missing.join(", ")}`,
-      formValues: body,
-      multiSignerEntries: buildMultiSignerEntries(typeDef, body),
-      userName: req.session.userName,
-      vpgPrincipal: VPG_PRINCIPAL,
-      stateNames: STATE_NAMES,
-      countiesByState: COUNTIES_BY_STATE,
-      titleCompanies: TITLE_COMPANIES,
-    });
+  // Collect signer name/email pairs. The "signs on behalf of VPG" signer is
+  // always forced to Sylvester here, regardless of what was submitted -
+  // this is what actually enforces the lock (the form doesn't even render
+  // editable inputs for it, but this is what stops someone from bypassing
+  // that by posting to this route directly). "Multiple" roles (Seller,
+  // Assignee) come back as an array of { name, email } - one per person.
+  const signers = {};
+  for (const s of typeDef.signers) {
+    if (s.internal) {
+      signers[s.key] = { name: VPG_PRINCIPAL.name, email: VPG_PRINCIPAL.email };
+    } else if (s.multiple) {
+      signers[s.key] = normalizeMultiEntries(body[`signer_${s.key}_name`], body[`signer_${s.key}_email`]);
+    } else {
+      signers[s.key] = {
+        name: (body[`signer_${s.key}_name`] || "").trim(),
+        email: (body[`signer_${s.key}_email`] || "").trim(),
+      };
+    }
   }
 
-  const partySummary = typeDef.signers
-    .map((s) => {
-      if (s.multiple) {
-        return (signers[s.key] || []).filter((e) => e.name).map((e) => e.name).join(", ");
+  // Collect the rest of the fields
+  const fields = {};
+  for (const f of typeDef.fields) {
+    fields[f.key] = (body[f.key] || "").trim();
+  }
+
+  // Basic required-field validation
+  const missing = [];
+  typeDef.signers.forEach((s) => {
+    if (s.internal) return;
+    if (s.multiple) {
+      const entries = signers[s.key] || [];
+      const complete = entries.filter((e) => e.name && e.email);
+      if (complete.length === 0) {
+        missing.push(`${s.label} (at least one)`);
+      } else if (complete.length !== entries.length) {
+        missing.push(`${s.label} - each row needs both a name and an email`);
       }
-      return signers[s.key].name;
-    })
-    .filter(Boolean)
-    .join(" & ");
-
-  const fullPropertyAddress = formatPropertyAddress(fields);
-
-  try {
-    const pdfBuffer = await generateAgreementPdf({ type: typeDef.key, fields, signers });
-
-    res.render("agreement-preview", {
-      typeDef,
-      pdfBase64: pdfBuffer.toString("base64"),
-      partySummary,
-      fullPropertyAddress,
-      formDataJson: JSON.stringify(body),
-      userName: req.session.userName,
-    });
-  } catch (err) {
-    // A PDF-generation failure here means nothing was ever attempted to be
-    // sent - so unlike the send-step catch below, this doesn't log a
-    // 'failed' row in `agreements` (there's nothing to log yet).
-    return res.render("agreement-form", {
-      typeDef,
-      error: `Could not build a preview: ${err.message}`,
-      formValues: body,
-      multiSignerEntries: buildMultiSignerEntries(typeDef, body),
-      userName: req.session.userName,
-      vpgPrincipal: VPG_PRINCIPAL,
-      stateNames: STATE_NAMES,
-      countiesByState: COUNTIES_BY_STATE,
-      titleCompanies: TITLE_COMPANIES,
-    });
-  }
-});
-
-// "Back to Edit" from the preview page - re-renders the form pre-filled
-// with exactly what was submitted (from formDataJson), so clicking back
-// never loses any typed-in data. Read-only, no DB writes.
-router.post("/agreements/new/:type/edit", (req, res) => {
-  const typeDef = getType(req.params.type);
-  if (!typeDef) return res.status(404).send("Unknown agreement type");
-
-  let body;
-  try {
-    body = JSON.parse(req.body.formDataJson || "{}");
-  } catch (err) {
-    body = {};
-  }
-
-  res.render("agreement-form", {
-    typeDef,
-    error: null,
-    formValues: body,
-    multiSignerEntries: buildMultiSignerEntries(typeDef, body),
-    userName: req.session.userName,
-    vpgPrincipal: VPG_PRINCIPAL,
-    stateNames: STATE_NAMES,
-    countiesByState: COUNTIES_BY_STATE,
-    titleCompanies: TITLE_COMPANIES,
+    } else {
+      if (!signers[s.key].name) missing.push(`${s.label} name`);
+      if (!signers[s.key].email) missing.push(`${s.label} email`);
+    }
   });
-});
-
-// Step 2 of 2: "Approve & Send" from the preview page. Re-parses the exact
-// same form data the preview was built from (formDataJson) and re-validates
-// it (defense in depth - the preview step already validated once, but this
-// is the route that actually triggers a real, external HelloSign send, so
-// it doesn't trust a posted hidden field blindly), then does the real send
-// and the `agreements` insert - this is the only place in the whole preview
-// flow that actually contacts HelloSign or writes a sent/failed row.
-router.post("/agreements/new/:type/send", async (req, res) => {
-  const typeDef = getType(req.params.type);
-  if (!typeDef) return res.status(404).send("Unknown agreement type");
-
-  let body;
-  try {
-    body = JSON.parse(req.body.formDataJson || "{}");
-  } catch (err) {
-    return res.status(400).send("Could not read the previewed document's data. Please go back and try again.");
-  }
-
-  const { signers, fields, missing } = buildFieldsAndSigners(typeDef, body);
+  typeDef.fields.forEach((f) => {
+    if (f.required && !fields[f.key]) missing.push(f.label);
+  });
 
   if (missing.length > 0) {
     return res.render("agreement-form", {
@@ -626,6 +505,10 @@ router.post("/agreements/new/:type/send", async (req, res) => {
     .filter(Boolean)
     .join(" & ");
 
+  // Full mailing-style address (street, city, state, ZIP) built from the
+  // separate form fields, stored on the agreement row so Recent Activity,
+  // the download filename, etc. always show the complete address - not just
+  // the street.
   const fullPropertyAddress = formatPropertyAddress(fields);
 
   try {
