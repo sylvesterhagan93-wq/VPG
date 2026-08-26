@@ -46,6 +46,21 @@
           <% }) %>
         </div>
 
+        <div class="section-label">Target Cities <span class="you-tag">(optional)</span></div>
+        <div class="page-subtitle" style="margin-bottom:12px;">
+          Check any specific city this buyer targets - even before they've purchased anything, they'll show up when
+          someone clicks that city's star on the map, noted as vetted and not yet purchased. Only cities already on
+          the map are listed here; if a city you need isn't shown, it needs to be added to the map first.
+        </div>
+        <div class="state-checkbox-grid">
+          <% cityOptions.forEach(function(opt) { %>
+            <label class="state-checkbox">
+              <input type="checkbox" name="target_cities" value="<%= opt.key %>" <%= (buyer.target_cities || []).includes(opt.key) ? 'checked' : '' %> />
+              <%= opt.label %>
+            </label>
+          <% }) %>
+        </div>
+
         <div class="section-label">Notes</div>
         <div class="form-grid">
           <div class="field full">

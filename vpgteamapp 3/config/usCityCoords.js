@@ -126,5 +126,17 @@ module.exports = {
   "Erie|PA": {
     "x": 762.7,
     "y": 204.3
+  },
+  "Mogadore|OH": {
+    "x": 746.1,
+    "y": 232.5
+  },
+  "Lakewood|OH": {
+    "x": 736.7,
+    "y": 223.5
+  },
+  "Avon Lake|OH": {
+    "x": 732.8,
+    "y": 223.5
   }
 };

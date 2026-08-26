@@ -19,7 +19,7 @@ function cityCoordFor(city, state) {
 }
 
 function buyerFormDefaults() {
-  return { name: "", phone: "", email: "", target_states: [], notes: "" };
+  return { name: "", phone: "", email: "", target_states: [], target_cities: [], notes: "" };
 }
 
 // Checkbox groups submit as a single string (one box checked), an array
@@ -33,6 +33,31 @@ function normalizeTargetStates(raw) {
     if (STATE_NAMES[code]) seen.add(code);
   });
   return Array.from(seen);
+}
+
+// Same normalize-a-checkbox-group pattern as target_states, but validated
+// against config/usCityCoords.js instead of STATE_NAMES - only lets through
+// a "City|ST" key that actually has a map coordinate, so a target-city
+// selection always produces a real, clickable star (never a silent typo).
+function normalizeTargetCities(raw) {
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const seen = new Set();
+  list.forEach((c) => {
+    const key = String(c).trim();
+    if (CITY_COORDS[key]) seen.add(key);
+  });
+  return Array.from(seen);
+}
+
+// Sorted "City|ST" -> "City, ST" options for the buyer form's target-city
+// checkboxes, built from the same hand-maintained lookup the map stars use.
+function cityOptionList() {
+  return Object.keys(CITY_COORDS)
+    .sort()
+    .map((key) => {
+      const [city, state] = key.split("|");
+      return { key, label: `${city}, ${state}` };
+    });
 }
 
 // The Buyers Map - an interactive US map (click a state to zoom in and see
@@ -118,10 +143,30 @@ router.get("/buyers-map", async (req, res, next) => {
       purchasesByBuyer[d.buyer_id].push({ address: d.address, status: d.status });
     });
 
+    // Vetted buyers who haven't purchased from us yet still get a marker at
+    // any specific city they target (buyers.target_cities, a "City|ST" key
+    // matching config/usCityCoords.js) - so clicking that city's star shows
+    // them alongside (or instead of, if nothing's been purchased there yet)
+    // any real UCB/Closed purchases. A buyer whose target city isn't in the
+    // hand-maintained coordinate lookup is skipped here (same graceful-skip
+    // pattern cityCoordFor() already uses for deals) rather than erroring.
+    const cityProspects = {};
+    buyers.forEach((b) => {
+      (b.target_cities || []).forEach((cityKey) => {
+        const coord = CITY_COORDS[cityKey];
+        if (!coord) return;
+        if (!cityProspects[cityKey]) {
+          const [city, state] = cityKey.split("|");
+          cityProspects[cityKey] = { x: coord.x, y: coord.y, city, state, buyers: [] };
+        }
+        cityProspects[cityKey].buyers.push({ id: b.id, name: b.name, phone: b.phone, email: b.email });
+      });
+    });
+
     // Serialized once here (not left to the view) so it's easy to guard
     // against a stray "</script>" inside free-text fields (buyer notes,
     // deal address) breaking out of the inline <script> tag it's embedded in.
-    const clientData = JSON.stringify({ stateData, dealMarkers }).replace(/<\//g, "<\\/");
+    const clientData = JSON.stringify({ stateData, dealMarkers, cityProspects }).replace(/<\//g, "<\\/");
 
     res.render("buyers-map", {
       userName: req.session.userName,
@@ -149,6 +194,7 @@ router.get("/buyers/new", (req, res) => {
     mode: "new",
     buyer: buyerFormDefaults(),
     stateNames: STATE_NAMES,
+    cityOptions: cityOptionList(),
     error: null,
   });
 });
@@ -156,26 +202,29 @@ router.get("/buyers/new", (req, res) => {
 router.post("/buyers", async (req, res, next) => {
   const body = req.body;
   const targetStates = normalizeTargetStates(body.target_states);
+  const targetCities = normalizeTargetCities(body.target_cities);
 
   if (!body.name || !body.name.trim()) {
     return res.render("buyer-form", {
       userName: req.session.userName,
       mode: "new",
-      buyer: { ...body, target_states: targetStates },
+      buyer: { ...body, target_states: targetStates, target_cities: targetCities },
       stateNames: STATE_NAMES,
+      cityOptions: cityOptionList(),
       error: "Please enter a buyer name.",
     });
   }
 
   try {
     await db.query(
-      `INSERT INTO buyers (name, phone, email, target_states, notes, created_by_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO buyers (name, phone, email, target_states, target_cities, notes, created_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         body.name.trim(),
         (body.phone || "").trim() || null,
         (body.email || "").trim() || null,
         targetStates,
+        targetCities,
         (body.notes || "").trim() || null,
         req.session.userId,
       ]
@@ -197,6 +246,7 @@ router.get("/buyers/:id/edit", async (req, res, next) => {
       mode: "edit",
       buyer,
       stateNames: STATE_NAMES,
+      cityOptions: cityOptionList(),
       error: null,
     });
   } catch (err) {
@@ -207,26 +257,29 @@ router.get("/buyers/:id/edit", async (req, res, next) => {
 router.post("/buyers/:id/edit", async (req, res, next) => {
   const body = req.body;
   const targetStates = normalizeTargetStates(body.target_states);
+  const targetCities = normalizeTargetCities(body.target_cities);
 
   if (!body.name || !body.name.trim()) {
     return res.render("buyer-form", {
       userName: req.session.userName,
       mode: "edit",
-      buyer: { ...body, id: req.params.id, target_states: targetStates },
+      buyer: { ...body, id: req.params.id, target_states: targetStates, target_cities: targetCities },
       stateNames: STATE_NAMES,
+      cityOptions: cityOptionList(),
       error: "Please enter a buyer name.",
     });
   }
 
   try {
     const result = await db.query(
-      `UPDATE buyers SET name = $1, phone = $2, email = $3, target_states = $4, notes = $5
-       WHERE id = $6`,
+      `UPDATE buyers SET name = $1, phone = $2, email = $3, target_states = $4, target_cities = $5, notes = $6
+       WHERE id = $7`,
       [
         body.name.trim(),
         (body.phone || "").trim() || null,
         (body.email || "").trim() || null,
         targetStates,
+        targetCities,
         (body.notes || "").trim() || null,
         req.params.id,
       ]
