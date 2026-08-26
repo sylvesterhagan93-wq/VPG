@@ -122,5 +122,9 @@ module.exports = {
   "North Highlands|CA": {
     "x": 58.1,
     "y": 246.2
+  },
+  "Erie|PA": {
+    "x": 762.7,
+    "y": 204.3
   }
 };
