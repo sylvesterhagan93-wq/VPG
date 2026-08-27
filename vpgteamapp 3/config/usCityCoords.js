@@ -161,5 +161,6 @@ module.exports = {
   "Tallahassee|FL": { "x": 726.2, "y": 479.8 },
   "Flagstaff|AZ": { "x": 211.6, "y": 361.6 },
   "Dayton|OH": { "x": 701.6, "y": 268.1 },
-  "Irvine|CA": { "x": 92.5, "y": 373.1 }
+  "Irvine|CA": { "x": 92.5, "y": 373.1 },
+  "Sarasota|FL": { "x": 770, "y": 544.8 }
 };
