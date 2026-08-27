@@ -77,8 +77,7 @@ function cityOptionList() {
 // plain directory of every buyer underneath for anyone who'd rather just
 // scan a list. "Deals" here deliberately means UCB or Closed only (a real
 // assigned/sold transaction), not Active/prospecting deals still being
-// worked - matches how services/buyerAlerts.js decides when to fire an
-// alert, so the map and the alerts agree on what counts as "a deal."
+// worked.
 // When a deal has a known buyer (deals.buyer_id), that buyer's exact
 // purchase location - street, city, state, and ZIP, since that's all one
 // address string on the deals table - shows on that deal's star marker and
@@ -352,20 +351,6 @@ router.post("/buyers/:id/restore", requireAdmin, async (req, res, next) => {
   try {
     await db.query("UPDATE buyers SET deleted_at = NULL WHERE id = $1", [req.params.id]);
     res.redirect("/buyers-map");
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Non-destructive (anyone can dismiss, not just admins) - "Mark contacted"
-// on the dashboard's Buyer Alerts banner.
-router.post("/buyer-alerts/:id/dismiss", async (req, res, next) => {
-  try {
-    await db.query(
-      "UPDATE buyer_alerts SET dismissed_at = now(), dismissed_by_user_id = $1 WHERE id = $2",
-      [req.session.userId, req.params.id]
-    );
-    res.redirect(req.get("Referrer") || "/dashboard");
   } catch (err) {
     next(err);
   }

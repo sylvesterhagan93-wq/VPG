@@ -10,7 +10,6 @@ const {
 } = require("../config/dealBoard");
 const { buildZillowUrl } = require("../services/zillow");
 const { buildBarChart, buildHBarChart } = require("../services/charts");
-const { checkBuyerAlertsForDeal } = require("../services/buyerAlerts");
 const { STATE_NAMES } = require("../config/usLocations");
 
 const router = express.Router();
@@ -252,7 +251,6 @@ router.post("/dealboard/new", async (req, res, next) => {
         parseDateOrNull(body.expected_closing_date),
       ]
     );
-    await checkBuyerAlertsForDeal(insertResult.rows[0].id);
     res.redirect("/dealboard");
   } catch (err) {
     next(err);
@@ -340,7 +338,6 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
         req.params.id,
       ]
     );
-    await checkBuyerAlertsForDeal(req.params.id);
     res.redirect("/dealboard");
   } catch (err) {
     next(err);
@@ -371,7 +368,6 @@ router.post("/dealboard/:id/status", async (req, res, next) => {
       closedAt,
       req.params.id,
     ]);
-    await checkBuyerAlertsForDeal(req.params.id);
     res.redirect(req.get("Referrer") || "/dealboard");
   } catch (err) {
     next(err);

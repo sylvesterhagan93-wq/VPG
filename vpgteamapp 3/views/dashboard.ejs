@@ -23,29 +23,6 @@
       </div>
     </div>
 
-    <% if (buyerAlerts && buyerAlerts.length > 0) { %>
-      <div class="buyer-alerts-panel">
-        <div class="buyer-alerts-panel-title">
-          <span class="buyer-alerts-dot"></span>
-          Buyer Alerts - <%= buyerAlerts.length %> deal<%= buyerAlerts.length === 1 ? '' : 's' %> to follow up on
-        </div>
-        <% buyerAlerts.forEach(function(a) { %>
-          <div class="buyer-alert-row">
-            <div class="buyer-alert-info">
-              <strong><%= a.buyer_name %></strong> buys in <strong><%= a.state %></strong> - new deal at
-              <strong><%= a.deal_address %><%= a.deal_city ? ', ' + a.deal_city : '' %></strong>.
-              <span class="buyer-alert-contact">
-                <% if (a.buyer_phone) { %><%= a.buyer_phone %><% } %><% if (a.buyer_phone && a.buyer_email) { %> &middot; <% } %><% if (a.buyer_email) { %><%= a.buyer_email %><% } %>
-              </span>
-            </div>
-            <form method="POST" action="/buyer-alerts/<%= a.id %>/dismiss" style="margin:0;">
-              <button type="submit" class="btn-tiny reactivate">Mark contacted</button>
-            </form>
-          </div>
-        <% }) %>
-      </div>
-    <% } %>
-
     <div class="page-title">Send an Agreement</div>
     <div class="page-subtitle">Pick a document type, fill in the details, and it will be sent out for signature.</div>
 
