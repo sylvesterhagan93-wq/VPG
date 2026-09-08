@@ -16,18 +16,47 @@ const router = express.Router();
 
 // A deal's "month" used to be simply the calendar month it was added to the
 // board (created_at). That matched the old Google Sheet's per-month tabs at
-// first, but the Sheet's tabs actually carry a still-open deal forward month
-// to month until it closes (a deal doesn't get "recreated" every month) -
-// which the created_at-only filter didn't do, so an Active/UCB deal from
-// August would silently disappear once September rolled around even though
-// it was still on the board. Fixed 2026-09-08: a month now shows a deal if
-// EITHER (a) it's still open (Active/UCB) and was created on or before that
-// month - so open deals carry forward automatically, or (b) it was closed
-// during that month (by closed_at, falling back to created_at if somehow
-// null) - so Closed deals are attributed to the month they actually closed
-// in, not the month they happened to be created in. This still lets the
-// board "default to this month only" and roll over automatically - it just
-// no longer drops open deals along the way.
+// first, but the Sheet's tabs actually carry EVERY deal forward month to
+// month - open OR closed - rather than "recreating" it fresh each month, so
+// the created_at-only filter didn't do, so a deal from August (whether still
+// open, or already closed) would silently disappear once September rolled
+// around even though it was still sitting right there on the Sheet's newest
+// tab. Fixed 2026-09-08, then corrected twice more the same day:
+// - Active/UCB deals carry forward from whenever they were created.
+// - Closed deals carry forward from whenever they actually closed
+//   (closed_at, falling back to created_at if somehow null) - matching the
+//   Sheet's September tab, which still lists 2112 23rd St NE as Closed even
+//   though it closed back in August, with its $5,000 profit still baked
+//   into that tab's own "Closed: 16000" summary math alongside 1504 South
+//   Ave's $11,000 (confirmed by adding them: 5000 + 11000 = 16000). So
+//   "Closed" is cumulative-as-of-this-tab on the Sheet, not strictly
+//   this-calendar-month, and this now matches that.
+// - IMPORTANT GUARDRAIL, added after almost shipping a real bug: closed_at
+//   carry-forward is capped with `deals.closed_at >= '2026-08-01'` AND
+//   `deals.estimated_profit IS NOT NULL`. The `deals` table also holds ~50+
+//   historical "subject property" rows backfilled purely to link cash
+//   buyers to their past purchases for the Buyers Map feature (see the
+//   Buyers Map section of this doc) - these are real closed transactions,
+//   but from 2021-2023 (years before this board or this app existed) and
+//   were never meant to be part of the Deal Board's own monthly view. Also
+//   discovered: a handful of that same batch have closed_at left NULL, so
+//   they'd have slipped past the date floor alone by falling back to their
+//   (recent-looking) created_at. `estimated_profit IS NOT NULL` is the
+//   clean, reliable signal that actually separates the two categories -
+//   every one of the 5 real board deals ever closed has a real profit
+//   figure (that's the whole point of tracking it), while every one of the
+//   ~50+ buyer-history rows has `estimated_profit = NULL` (verified via a
+//   direct count: 5 with profit vs. 53 without, exactly matching the two
+//   categories) - keeping both checks as belt-and-suspenders. An unbounded
+//   "closed_at <= selected month" carry-forward, with no such guard, would
+//   have resurrected all ~50+ of them into every current/future month's
+//   Closed table - caught by directly testing the new SQL against live
+//   data before deploying, not by inspection alone; worth re-testing this
+//   same way (`SELECT ... WHERE <new filter>` against real Supabase data)
+//   any time this filter is touched again, since the failure mode is
+//   silent (no error, just wrong/extra rows). This still lets the board
+//   "default to this month only" and roll over automatically - it just no
+//   longer drops a real board deal, open or closed, along the way.
 function monthKey(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -97,16 +126,22 @@ router.get("/dealboard", async (req, res, next) => {
     if (!months.includes(selectedMonthKey)) months.push(selectedMonthKey);
     months.sort().reverse();
 
-    // See the monthKey() comment above - a deal counts toward the selected
-    // month if it's still open (carried forward from whenever it was
-    // created) or if it was actually closed during that month.
+    // See the monthKey() comment above - every deal carries forward into the
+    // selected month once it exists there: Active/UCB from whenever it was
+    // created, Closed from whenever it actually closed (bounded to real
+    // board deals only - see the guardrail comment above).
     const dealsResult = await db.query(
       `SELECT deals.*, users.name AS created_by_name
        FROM deals
        LEFT JOIN users ON users.id = deals.created_by_user_id
        WHERE
          (deals.status IN ('Active', 'UCB') AND to_char(deals.created_at, 'YYYY-MM') <= $1)
-         OR (deals.status = 'Closed' AND to_char(COALESCE(deals.closed_at, deals.created_at), 'YYYY-MM') = $1)
+         OR (
+           deals.status = 'Closed'
+           AND deals.estimated_profit IS NOT NULL
+           AND COALESCE(deals.closed_at, deals.created_at) >= '2026-08-01'
+           AND to_char(COALESCE(deals.closed_at, deals.created_at), 'YYYY-MM') <= $1
+         )
        ORDER BY deals.created_at DESC`,
       [selectedMonthKey]
     );
