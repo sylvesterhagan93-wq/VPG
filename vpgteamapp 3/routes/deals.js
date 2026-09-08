@@ -14,10 +14,20 @@ const { STATE_NAMES } = require("../config/usLocations");
 
 const router = express.Router();
 
-// A deal's "month" is simply the calendar month it was added to the board
-// (created_at) - this is what lets the board default to "this month only"
-// and automatically roll over to next month, without anyone having to
-// create a new monthly tab/sheet like the old Google Sheet required.
+// A deal's "month" used to be simply the calendar month it was added to the
+// board (created_at). That matched the old Google Sheet's per-month tabs at
+// first, but the Sheet's tabs actually carry a still-open deal forward month
+// to month until it closes (a deal doesn't get "recreated" every month) -
+// which the created_at-only filter didn't do, so an Active/UCB deal from
+// August would silently disappear once September rolled around even though
+// it was still on the board. Fixed 2026-09-08: a month now shows a deal if
+// EITHER (a) it's still open (Active/UCB) and was created on or before that
+// month - so open deals carry forward automatically, or (b) it was closed
+// during that month (by closed_at, falling back to created_at if somehow
+// null) - so Closed deals are attributed to the month they actually closed
+// in, not the month they happened to be created in. This still lets the
+// board "default to this month only" and roll over automatically - it just
+// no longer drops open deals along the way.
 function monthKey(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -75,18 +85,28 @@ router.get("/dealboard", async (req, res, next) => {
     const selectedMonthKey = /^\d{4}-\d{2}$/.test(req.query.month || "") ? req.query.month : currentMonthKey;
 
     const monthsResult = await db.query(
-      `SELECT DISTINCT to_char(created_at, 'YYYY-MM') AS month_key FROM deals ORDER BY month_key DESC`
+      `SELECT DISTINCT month_key FROM (
+         SELECT to_char(created_at, 'YYYY-MM') AS month_key FROM deals
+         UNION
+         SELECT to_char(closed_at, 'YYYY-MM') AS month_key FROM deals WHERE closed_at IS NOT NULL
+       ) months
+       ORDER BY month_key DESC`
     );
     const months = monthsResult.rows.map((r) => r.month_key);
     if (!months.includes(currentMonthKey)) months.unshift(currentMonthKey);
     if (!months.includes(selectedMonthKey)) months.push(selectedMonthKey);
     months.sort().reverse();
 
+    // See the monthKey() comment above - a deal counts toward the selected
+    // month if it's still open (carried forward from whenever it was
+    // created) or if it was actually closed during that month.
     const dealsResult = await db.query(
       `SELECT deals.*, users.name AS created_by_name
        FROM deals
        LEFT JOIN users ON users.id = deals.created_by_user_id
-       WHERE to_char(deals.created_at, 'YYYY-MM') = $1
+       WHERE
+         (deals.status IN ('Active', 'UCB') AND to_char(deals.created_at, 'YYYY-MM') <= $1)
+         OR (deals.status = 'Closed' AND to_char(COALESCE(deals.closed_at, deals.created_at), 'YYYY-MM') = $1)
        ORDER BY deals.created_at DESC`,
       [selectedMonthKey]
     );
