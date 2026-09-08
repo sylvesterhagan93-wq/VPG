@@ -12,8 +12,11 @@ const PROPERTY_TYPE_SUGGESTIONS = ["SFR", "Multifamily", "Land", "Commercial"];
 const EXIT_STRATEGY_SUGGESTIONS = ["Wholesale", "Novation", "Flip", "Listing"];
 const MARKETING_CHANNEL_SUGGESTIONS = ["Cold Calling", "JV", "Referral", "SMS", "PPC", "Direct Mail"];
 
-// Matches the "$50,000 Monthly Goal" that was on every tab of the sheet.
-const MONTHLY_CLOSED_PROFIT_GOAL = 50000;
+// Matches the "$120,000 Monthly Goal" on the sheet's current (September)
+// tab - was $50,000 on July/August's tabs; Sylvester raises this per month,
+// so re-check the sheet's current tab before assuming this value still
+// applies to a later month.
+const MONTHLY_CLOSED_PROFIT_GOAL = 120000;
 
 module.exports = {
   STATUSES,
