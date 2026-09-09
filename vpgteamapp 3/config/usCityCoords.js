@@ -162,5 +162,8 @@ module.exports = {
   "Flagstaff|AZ": { "x": 211.6, "y": 361.6 },
   "Dayton|OH": { "x": 701.6, "y": 268.1 },
   "Irvine|CA": { "x": 92.5, "y": 373.1 },
-  "Sarasota|FL": { "x": 770, "y": 544.8 }
+  "Sarasota|FL": { "x": 770, "y": 544.8 },
+  "Garrettsville|OH": { "x": 749.2, "y": 226.1 },
+  "Ravenna|OH": { "x": 747.1, "y": 229.4 },
+  "Windham|OH": { "x": 750.2, "y": 227 }
 };
