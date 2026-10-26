@@ -3,7 +3,13 @@
 // and the monthly closed-profit goal shown as a progress bar. Edit here to
 // change any of these without touching the routes or views.
 
-const STATUSES = ["Active", "UCB", "Closed"];
+// "Dead" added 2026-10-26 to match the Sheet's October tab (a deal that
+// fell through, e.g. 147 N Marion St, Dayton) - distinct from Closed (a
+// real completed sale). See routes/deals.js's monthKey() comment for how
+// Dead deals are attributed to a month (same exact-month pattern as
+// Closed, keyed off updated_at since there's no dedicated "dead_at"
+// column).
+const STATUSES = ["Active", "UCB", "Closed", "Dead"];
 
 // Suggestions only (rendered as <datalist> options) - the fields stay free
 // text so a new property type, exit strategy, or marketing channel doesn't

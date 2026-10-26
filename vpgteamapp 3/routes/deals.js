@@ -62,6 +62,12 @@ const router = express.Router();
 //   filter is touched again - both this bug and its first, over-corrected
 //   fix were only caught by comparing against the live Sheet/DB directly,
 //   never by `node --check` or a syntax-level render test.
+// - "Dead" status added 2026-10-26 (a deal that fell through, matching
+//   the Sheet's October tab) - attributed to a month the same way Closed
+//   is: the exact month it actually went Dead, not carried forward. There's
+//   no dedicated "dead_at" column, so `updated_at` (already bumped on every
+//   status change) is the proxy - good enough since Dead is a terminal
+//   status nobody edits further.
 function monthKey(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -110,6 +116,7 @@ function dealFormDefaults() {
     notes: "",
     deal_folder_url: "",
     expected_closing_date: "",
+    inspection_period_end_date: "",
   };
 }
 
@@ -123,6 +130,8 @@ router.get("/dealboard", async (req, res, next) => {
          SELECT to_char(created_at, 'YYYY-MM') AS month_key FROM deals
          UNION
          SELECT to_char(closed_at, 'YYYY-MM') AS month_key FROM deals WHERE closed_at IS NOT NULL
+         UNION
+         SELECT to_char(updated_at, 'YYYY-MM') AS month_key FROM deals WHERE status = 'Dead'
        ) months
        ORDER BY month_key DESC`
     );
@@ -132,9 +141,10 @@ router.get("/dealboard", async (req, res, next) => {
     months.sort().reverse();
 
     // See the monthKey() comment above - Active/UCB deals carry forward into
-    // the selected month from whenever they were created; Closed deals show
-    // only in the exact month they actually closed, matching the Sheet
-    // (bounded to real board deals only - see the guard comment above).
+    // the selected month from whenever they were created; Closed and Dead
+    // deals show only in the exact month they actually closed/died,
+    // matching the Sheet (bounded to real board deals only - see the guard
+    // comment above).
     const dealsResult = await db.query(
       `SELECT deals.*, users.name AS created_by_name
        FROM deals
@@ -146,12 +156,16 @@ router.get("/dealboard", async (req, res, next) => {
            AND deals.estimated_profit IS NOT NULL
            AND to_char(COALESCE(deals.closed_at, deals.created_at), 'YYYY-MM') = $1
          )
+         OR (
+           deals.status = 'Dead'
+           AND to_char(COALESCE(deals.updated_at, deals.created_at), 'YYYY-MM') = $1
+         )
        ORDER BY deals.created_at DESC`,
       [selectedMonthKey]
     );
     const deals = dealsResult.rows;
 
-    const byStatus = { Active: [], UCB: [], Closed: [] };
+    const byStatus = { Active: [], UCB: [], Closed: [], Dead: [] };
     deals.forEach((d) => {
       if (byStatus[d.status]) byStatus[d.status].push(d);
     });
@@ -161,6 +175,7 @@ router.get("/dealboard", async (req, res, next) => {
       active: { count: byStatus.Active.length, profit: sum(byStatus.Active) },
       ucb: { count: byStatus.UCB.length, profit: sum(byStatus.UCB) },
       closed: { count: byStatus.Closed.length, profit: sum(byStatus.Closed) },
+      dead: { count: byStatus.Dead.length, profit: sum(byStatus.Dead) },
     };
     summary.potentialProfit = summary.active.profit + summary.ucb.profit;
     summary.goal = MONTHLY_CLOSED_PROFIT_GOAL;
@@ -285,8 +300,8 @@ router.post("/dealboard/new", async (req, res, next) => {
       `INSERT INTO deals
         (address, city, state, property_type, exit_strategy, marketing_channel, buy_price, estimated_rehab,
          arv, sale_price, estimated_profit, status, emd_received, misc_deal_costs, notes,
-         deal_folder_url, created_by_user_id, closed_at, expected_closing_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         deal_folder_url, created_by_user_id, closed_at, expected_closing_date, inspection_period_end_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING id`,
       [
         body.address.trim(),
@@ -308,6 +323,7 @@ router.post("/dealboard/new", async (req, res, next) => {
         req.session.userId,
         status === "Closed" ? new Date() : null,
         parseDateOrNull(body.expected_closing_date),
+        parseDateOrNull(body.inspection_period_end_date),
       ]
     );
     res.redirect("/dealboard");
@@ -373,8 +389,9 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
          address = $1, city = $2, state = $3, property_type = $4, exit_strategy = $5, marketing_channel = $6,
          buy_price = $7, estimated_rehab = $8, arv = $9, sale_price = $10, estimated_profit = $11,
          status = $12, emd_received = $13, misc_deal_costs = $14, notes = $15,
-         deal_folder_url = $16, updated_at = now(), closed_at = $17, expected_closing_date = $18
-       WHERE id = $19`,
+         deal_folder_url = $16, updated_at = now(), closed_at = $17, expected_closing_date = $18,
+         inspection_period_end_date = $19
+       WHERE id = $20`,
       [
         body.address.trim(),
         (body.city || "").trim() || null,
@@ -394,6 +411,7 @@ router.post("/dealboard/:id/edit", async (req, res, next) => {
         (body.deal_folder_url || "").trim() || null,
         closedAt,
         parseDateOrNull(body.expected_closing_date),
+        parseDateOrNull(body.inspection_period_end_date),
         req.params.id,
       ]
     );

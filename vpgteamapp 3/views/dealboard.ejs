@@ -128,6 +128,7 @@
                 <th>%</th>
                 <th>Est. Profit</th>
                 <th>Expected Closing</th>
+                <th>Inspection Period Ends</th>
                 <th>EMD</th>
                 <th>Added By</th>
                 <th>Status</th>
@@ -155,6 +156,7 @@
                   <td><%= pct !== null ? pct + '%' : '-' %></td>
                   <td><%= money(d.estimated_profit) %></td>
                   <td><%= d.expected_closing_date ? new Date(d.expected_closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-' %></td>
+                  <td><%= d.inspection_period_end_date ? new Date(d.inspection_period_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-' %></td>
                   <td><%= d.emd_received ? 'Yes' : '-' %></td>
                   <td><%= d.created_by_name || '-' %></td>
                   <td>

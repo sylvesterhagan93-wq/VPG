@@ -567,6 +567,7 @@ table.history th {
 .badge.Active { background: #eaf1ff; color: var(--navy); }
 .badge.UCB { background: #fff4e0; color: #9a6400; }
 .badge.Closed { background: var(--success-bg); color: var(--success); }
+.badge.Dead { background: var(--danger-bg); color: var(--danger); }
 
 select.badge {
   -webkit-appearance: none;

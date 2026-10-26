@@ -71,6 +71,10 @@
             <label for="expected_closing_date">Expected Closing Date</label>
             <input type="date" id="expected_closing_date" name="expected_closing_date" value="<%= deal.expected_closing_date ? new Date(deal.expected_closing_date).toISOString().slice(0, 10) : '' %>" />
           </div>
+          <div class="field">
+            <label for="inspection_period_end_date">Inspection Period End Date</label>
+            <input type="date" id="inspection_period_end_date" name="inspection_period_end_date" value="<%= deal.inspection_period_end_date ? new Date(deal.inspection_period_end_date).toISOString().slice(0, 10) : '' %>" />
+          </div>
         </div>
 
         <div class="section-label">Numbers</div>
