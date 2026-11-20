@@ -9,7 +9,41 @@
 // "Retrieve another design" / the design's own share link to get its
 // shareUrl, then add an entry here (imageUrl is optional - the item still
 // renders fine without one).
+//
+// Items without a shareUrl show a "Coming soon" tag instead of the order
+// button - use that for designs that are previewed (mockup image in
+// public/images/merch) but not saved on CustomInk yet.
 const MERCH_ITEMS = [
+  {
+    name: "Venture 216 Hoodie",
+    product: "Comfort Colors Hooded Sweatshirt",
+    color: "Grey",
+    imageUrl: "/images/merch/venture-216-hoodie-grey.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Venture%20216%20Hoodie/mnr0-00d4-chye/share",
+  },
+  {
+    name: "Venture 216 Hoodie",
+    product: "Comfort Colors Hooded Sweatshirt",
+    color: "White",
+    imageUrl: "/images/merch/venture-216-hoodie-white.jpg",
+  },
+  {
+    name: "Venture 216 Nike Tee",
+    product: "Nike Team rLegend Recycled Performance Shirt",
+    color: "Carbon Heather (Gray)",
+    imageUrl: "/images/merch/venture-216-tee-gray.jpg",
+  },
+  {
+    name: "Venture 216 Nike Tee",
+    product: "Nike Team rLegend Recycled Performance Shirt",
+    color: "White",
+    imageUrl: "/images/merch/venture-216-tee-white.jpg",
+  },
+  {
+    name: "Venture 216 Nike Tee",
+    product: "Nike Team rLegend Recycled Performance Shirt",
+    color: "Blue",
+  },
   {
     name: "VPG Backpack",
     product: 'Nike Utility Speed 16" Computer Backpack 2.0',

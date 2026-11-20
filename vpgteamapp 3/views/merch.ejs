@@ -33,7 +33,11 @@
             <div class="merch-card-body">
               <h3><%= item.name %></h3>
               <p class="merch-card-detail"><%= item.product %><% if (item.color) { %> &middot; <%= item.color %><% } %></p>
-              <a class="btn" href="<%= item.shareUrl %>" target="_blank" rel="noopener noreferrer">Order on CustomInk</a>
+              <% if (item.shareUrl) { %>
+                <a class="btn" href="<%= item.shareUrl %>" target="_blank" rel="noopener noreferrer">Order on CustomInk</a>
+              <% } else { %>
+                <span class="merch-coming-soon">Coming soon</span>
+              <% } %>
             </div>
           </div>
         <% }) %>
