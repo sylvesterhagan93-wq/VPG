@@ -81,12 +81,25 @@ const MERCH_ITEMS = [
     shareUrl: "https://www.customink.com/designs/Sylvester%20%20Hagan/mnr0-00d3-6mg9/share",
   },
   {
-    name: "VPG Hat",
-    product: "Nike Dri-FIT Swoosh Perforated Hat - Embroidered",
-    color: "White / Black",
-    imageUrl:
-      "https://mms-images.out.customink.com/mms/images/catalog/colors/481600/views/alt/front_medium_extended.png?design=mnr0-00d3-7m61&pblegacy=1&pblegacysize=small&pblegacywm=1",
-    shareUrl: "https://www.customink.com/designs/VPG%20hat%201/mnr0-00d3-7m61/share",
+    name: "VPG Nike Heritage Hat",
+    product: "Nike Heritage 86 Cap - Embroidered",
+    color: "White",
+    imageUrl: "/images/merch/vpg-nike-heritage-hat-white.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Nike%20Heritage%20Hat%20Whi/mnr0-00d4-cspe/share",
+  },
+  {
+    name: "VPG Carhartt Beanie",
+    product: "Carhartt Watch Beanie 2.0 - Embroidered",
+    color: "Coal Heather",
+    imageUrl: "/images/merch/vpg-carhartt-beanie-coal.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Carhartt%20Beanie%20Black/mnr0-00d4-csne/share",
+  },
+  {
+    name: "VPG Carhartt Beanie",
+    product: "Carhartt Watch Beanie 2.0 - Embroidered",
+    color: "Black / White",
+    imageUrl: "/images/merch/vpg-carhartt-beanie-blackwhite.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Carhartt%20Beanie%20Black/mnr0-00d4-csne/share",
   },
 ];
 
