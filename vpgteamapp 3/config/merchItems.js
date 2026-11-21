@@ -66,9 +66,10 @@ const MERCH_ITEMS = [
   },
   {
     name: "VPG Nike Heritage Hat",
-    product: "Nike Heritage 86 Cap - Embroidered (VPG patch logo)",
+    product: "Nike Heritage Baseball Hat - Embroidered (VPG patch logo)",
     color: "White",
     imageUrl: "/images/merch/vpg-nike-heritage-hat-patch.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Nike%20Heritage%20Hat%20Whi/mnr0-00d4-cspe/share",
   },
   {
     name: "VPG Carhartt Beanie",
@@ -89,30 +90,28 @@ const MERCH_ITEMS = [
     product: 'Nike Commute 15" Computer Backpack',
     color: "Desert Khaki",
     imageUrl: "/images/merch/vpg-nike-commute-backpack-khaki.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Nike%20Commute%20Khaki/mnr0-00d4-cxs9/share",
   },
   {
     name: "VPG Nike Commute Backpack",
     product: 'Nike Commute 15" Computer Backpack',
     color: "Black",
     imageUrl: "/images/merch/vpg-nike-commute-backpack-black.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Nike%20Commute%20Backpack/mnr0-00d4-cxs3/share",
   },
   {
     name: "VPG Stanley Camp Mug",
     product: 'Stanley 12 oz. Legendary Camp Mug',
     color: "Cream",
     imageUrl: "/images/merch/vpg-stanley-mug-cream.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Stanley%20Mug%20Cream/mnr0-00d4-cxqr/share",
   },
   {
     name: "VPG Stanley Camp Mug",
     product: 'Stanley 12 oz. Legendary Camp Mug',
     color: "Green",
     imageUrl: "/images/merch/vpg-stanley-mug-green.jpg",
-  },
-  {
-    name: "VPG Stanley Camp Mug",
-    product: 'Stanley 12 oz. Legendary Camp Mug',
-    color: "Navy",
-    imageUrl: "/images/merch/vpg-stanley-mug-navy.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Stanley%20Mug%20Green/mnr0-00d4-cxqy/share",
   },
   {
     name: "VPG Travel Bottle",
