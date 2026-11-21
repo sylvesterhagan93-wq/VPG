@@ -129,8 +129,8 @@ const MERCH_ITEMS = [
   },
   {
     name: "VPG House Magnet",
-    product: 'Large House Magnet',
-    color: "White",
+    product: 'Full Color House Refrigerator Magnet',
+    color: "Navy",
     imageUrl: "/images/merch/vpg-house-magnet.jpg",
     shareUrl: "https://www.customink.com/designs/VPG%20House%20Magnet/mnr0-00d4-cxwa/share",
   },
