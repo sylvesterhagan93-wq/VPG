@@ -129,8 +129,8 @@ const MERCH_ITEMS = [
   },
   {
     name: "VPG Travel Bottle",
-    product: 'Full Color 25 oz. Spectra Stainless Steel Water Bottle',
-    color: "Green",
+    product: 'Full Color 17 oz. Leighton Stainless Steel Insulated Water Bottle',
+    color: "Olive Green",
     imageUrl: "/images/merch/vpg-travel-bottle-green.jpg",
     shareUrl: "https://www.customink.com/designs/VPG%20Travel%20Bottle%20Green/mnr0-00d4-cxvu/share",
   },
