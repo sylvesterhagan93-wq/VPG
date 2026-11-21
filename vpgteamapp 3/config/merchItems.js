@@ -65,27 +65,10 @@ const MERCH_ITEMS = [
     shareUrl: "https://www.customink.com/designs/VPG%20backpack/mnr0-00d3-7mau/share",
   },
   {
-    name: "VPG Hoodie",
-    product: "Nike Club Fleece Sleeve Swoosh Pullover Hoodie",
-    color: "Gorge Green",
-    imageUrl:
-      "https://mms-images.out.customink.com/mms/images/catalog/colors/1102607/views/alt/front_medium_extended.png?design=mnr0-00d3-7knr&pblegacy=1&pblegacysize=small&pblegacywm=1",
-    shareUrl: "https://www.customink.com/designs/VPG%20hoodies/mnr0-00d3-7knr/share",
-  },
-  {
-    name: "VPG Performance Polo",
-    product: "Nike Dri-FIT Tech Sport Performance Polo",
-    color: "Navy",
-    imageUrl:
-      "https://mms-images.out.customink.com/mms/images/catalog/colors/1536402/views/alt/front_medium_extended.png?design=mnr0-00d3-6mg9&pblegacy=1&pblegacysize=small&pblegacywm=1",
-    shareUrl: "https://www.customink.com/designs/Sylvester%20%20Hagan/mnr0-00d3-6mg9/share",
-  },
-  {
     name: "VPG Nike Heritage Hat",
-    product: "Nike Heritage 86 Cap - Embroidered",
+    product: "Nike Heritage 86 Cap - Embroidered (VPG patch logo)",
     color: "White",
-    imageUrl: "/images/merch/vpg-nike-heritage-hat-white.jpg",
-    shareUrl: "https://www.customink.com/designs/VPG%20Nike%20Heritage%20Hat%20Whi/mnr0-00d4-cspe/share",
+    imageUrl: "/images/merch/vpg-nike-heritage-hat-patch.jpg",
   },
   {
     name: "VPG Carhartt Beanie",
@@ -100,6 +83,60 @@ const MERCH_ITEMS = [
     color: "Black / White",
     imageUrl: "/images/merch/vpg-carhartt-beanie-blackwhite.jpg",
     shareUrl: "https://www.customink.com/designs/VPG%20Carhartt%20Beanie%20Black/mnr0-00d4-csne/share",
+  },
+  {
+    name: "VPG Nike Commute Backpack",
+    product: 'Nike Commute 15" Computer Backpack',
+    color: "Desert Khaki",
+    imageUrl: "/images/merch/vpg-nike-commute-backpack-khaki.jpg",
+  },
+  {
+    name: "VPG Nike Commute Backpack",
+    product: 'Nike Commute 15" Computer Backpack',
+    color: "Black",
+    imageUrl: "/images/merch/vpg-nike-commute-backpack-black.jpg",
+  },
+  {
+    name: "VPG Stanley Camp Mug",
+    product: 'Stanley 12 oz. Legendary Camp Mug',
+    color: "Cream",
+    imageUrl: "/images/merch/vpg-stanley-mug-cream.jpg",
+  },
+  {
+    name: "VPG Stanley Camp Mug",
+    product: 'Stanley 12 oz. Legendary Camp Mug',
+    color: "Green",
+    imageUrl: "/images/merch/vpg-stanley-mug-green.jpg",
+  },
+  {
+    name: "VPG Stanley Camp Mug",
+    product: 'Stanley 12 oz. Legendary Camp Mug',
+    color: "Navy",
+    imageUrl: "/images/merch/vpg-stanley-mug-navy.jpg",
+  },
+  {
+    name: "VPG Travel Bottle",
+    product: 'Insulated Stainless Steel Travel Bottle',
+    color: "White",
+    imageUrl: "/images/merch/vpg-travel-bottle-white.jpg",
+  },
+  {
+    name: "VPG Travel Bottle",
+    product: 'Insulated Stainless Steel Travel Bottle',
+    color: "Navy",
+    imageUrl: "/images/merch/vpg-travel-bottle-navy.jpg",
+  },
+  {
+    name: "VPG Travel Bottle",
+    product: 'Insulated Stainless Steel Travel Bottle',
+    color: "Green",
+    imageUrl: "/images/merch/vpg-travel-bottle-green.jpg",
+  },
+  {
+    name: "VPG House Magnet",
+    product: 'Full Color House Refrigerator Magnet',
+    color: "Navy",
+    imageUrl: "/images/merch/vpg-house-magnet.jpg",
   },
 ];
 
