@@ -115,27 +115,31 @@ const MERCH_ITEMS = [
   },
   {
     name: "VPG Travel Bottle",
-    product: 'Insulated Stainless Steel Travel Bottle',
+    product: 'Full Color 16 oz. Swiggy Stainless Steel Vacuum Insulated Water Bottle',
     color: "White",
     imageUrl: "/images/merch/vpg-travel-bottle-white.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Travel%20Bottle%20White/mnr0-00d4-cxv8/share",
   },
   {
     name: "VPG Travel Bottle",
-    product: 'Insulated Stainless Steel Travel Bottle',
+    product: 'Full Color 16 oz. Swiggy Stainless Steel Vacuum Insulated Water Bottle',
     color: "Navy",
     imageUrl: "/images/merch/vpg-travel-bottle-navy.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Travel%20Bottle%20Navy/mnr0-00d4-cxv3/share",
   },
   {
     name: "VPG Travel Bottle",
-    product: 'Insulated Stainless Steel Travel Bottle',
+    product: 'Full Color 25 oz. Spectra Stainless Steel Water Bottle',
     color: "Green",
     imageUrl: "/images/merch/vpg-travel-bottle-green.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20Travel%20Bottle%20Green/mnr0-00d4-cxvu/share",
   },
   {
     name: "VPG House Magnet",
-    product: 'Full Color House Refrigerator Magnet',
-    color: "Navy",
+    product: 'Large House Magnet',
+    color: "White",
     imageUrl: "/images/merch/vpg-house-magnet.jpg",
+    shareUrl: "https://www.customink.com/designs/VPG%20House%20Magnet/mnr0-00d4-cxwa/share",
   },
 ];
 
